@@ -39,8 +39,7 @@ enum TxLockModes_t {
     F_LOCK_FCC,
     F_LOCK_CE,
     F_LOCK_GB,
-    F_LOCK_430,
-    F_LOCK_438,
+
     F_LOCK_ALL,	// disable TX on all frequencies
     F_LOCK_NONE, // enable TX on all frequencies
     F_LOCK_LEN
@@ -95,8 +94,8 @@ enum ACTION_OPT_t {
     ACTION_OPT_D_DCD,
     ACTION_OPT_WIDTH,
 #ifdef ENABLE_SIDEFUNCTIONS_SEND
-    ACTION_OPT_SEND_A,
-    ACTION_OPT_SEND_B,
+    ACTION_OPT_SEND_CURRENT,
+    ACTION_OPT_SEND_OTHER,
 #endif
     ACTION_OPT_LEN
 };
@@ -264,6 +263,7 @@ typedef struct {
     BLMIN_STAT_t		  BACKLIGHT_MIN_STAT;
 #endif
     uint8_t               BACKLIGHT_MAX;
+
     BATTERY_Type_t		  BATTERY_TYPE;
 #ifdef ENABLE_RSSI_BAR
     uint8_t               S0_LEVEL;
@@ -289,4 +289,6 @@ void SETTINGS_SaveChannel(uint8_t Channel, uint8_t VFO, const VFO_Info_t *pVFO, 
 void SETTINGS_SaveBatteryCalibration(const uint16_t * batteryCalibration);
 void SETTINGS_UpdateChannel(uint8_t channel, const VFO_Info_t *pVFO, bool keep);
 void SETTINGS_WriteBuildOptions(void);
+extern int               key_dir;
+
 #endif

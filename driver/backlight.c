@@ -27,7 +27,7 @@ bool backlightOn;
 
 void BACKLIGHT_InitHardware() {
     // 48MHz / 94 / 1024 ~ 500Hz
-    const uint32_t PWM_FREQUENCY_HZ = 1000;
+    const uint32_t PWM_FREQUENCY_HZ = 25000;
     PWM_PLUS0_CLKSRC |= ((48000000 / 1024 / PWM_FREQUENCY_HZ) << 16);
     PWM_PLUS0_PERIOD = 1023;
 
@@ -98,14 +98,13 @@ bool BACKLIGHT_IsOn() {
 
 static uint8_t currentBrightness;
 
-void BACKLIGHT_SetBrightness(uint8_t brigtness)
-{
+void BACKLIGHT_SetBrightness(uint8_t brigtness) {
+    const uint8_t value[]= {0,3,6,9,15,24,38,62,100,159,255};
     currentBrightness = brigtness;
-    PWM_PLUS0_CH0_COMP = (1 << brigtness) - 1;
+    PWM_PLUS0_CH0_COMP =  value[brigtness]<<2;
     //PWM_PLUS0_SWLOAD = 1;
 }
 
-uint8_t BACKLIGHT_GetBrightness(void)
-{
+uint8_t BACKLIGHT_GetBrightness(void) {
     return currentBrightness;
 }

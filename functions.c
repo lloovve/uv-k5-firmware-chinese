@@ -26,7 +26,12 @@
 #include "bsp/dp32g030/gpio.h"
 #include "dcs.h"
 #include "driver/backlight.h"
-
+#ifdef ENABLE_MESSENGER
+#include "app/messenger.h"
+#endif
+#ifdef ENABLE_DOPPLER
+#include "app/doppler.h"
+#endif
 #if defined(ENABLE_FMRADIO)
 #include "driver/bk1080.h"
 #endif
@@ -62,8 +67,8 @@ void FUNCTION_Init(void)
 
     g_SquelchLost      = false;
 
-    gFlagTailNoteEliminationComplete   = false;
-    gTailNoteEliminationCountdown_10ms = 0;
+    gFlagTailToneEliminationComplete   = false;
+    gTailToneEliminationCountdown_10ms = 0;
     gFoundCTCSS                        = false;
     gFoundCDCSS                        = false;
     gFoundCTCSSCountdown_10ms          = 0;
@@ -140,9 +145,12 @@ void FUNCTION_PowerSave() {
 
 void FUNCTION_Transmit() {
     // if DTMF is enabled when TX'ing, it changes the TX audio filtering !! .. 1of11
-#ifdef ENABLE_MDC1200
-    BK4819_enable_mdc1200_rx(false);
+
+#if defined(ENABLE_MESSENGER) || defined(ENABLE_MDC1200)
+    enable_msg_rx(false);
 #endif
+
+
     BK4819_DisableDTMF();
 
 #ifdef ENABLE_DTMF_CALLING
@@ -193,9 +201,13 @@ void FUNCTION_Transmit() {
 
     DTMF_Reply();
 #ifdef ENABLE_MDC1200
+#ifdef ENABLE_MESSENGER
+    if(!stop_mdc_flag){
+#endif
+    if ((gEeprom.ROGER == ROGER_MODE_MDC_HEAD || gEeprom.ROGER == ROGER_MODE_MDC_BOTH ||gEeprom.ROGER == ROGER_MODE_MDC_HEAD_ROGER)
 
-    if (gEeprom.ROGER == ROGER_MODE_MDC_HEAD || gEeprom.ROGER == ROGER_MODE_MDC_BOTH ||
-        gEeprom.ROGER == ROGER_MODE_MDC_HEAD_ROGER) {
+
+        ) {
         BK4819_send_MDC1200(1, 0x80, gEeprom.MDC1200_ID, true);
 
 #ifdef ENABLE_MDC1200_SIDE_BEEP
@@ -207,7 +219,13 @@ void FUNCTION_Transmit() {
 #endif
     if (gCurrentVfo->DTMF_PTT_ID_TX_MODE == PTT_ID_APOLLO)
         BK4819_PlaySingleTone(2525, 250, 0, gEeprom.DTMF_SIDE_TONE);
+#ifdef ENABLE_MESSENGER
+    #ifdef ENABLE_MDC1200
 
+    }
+    #endif
+
+#endif
 #if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
     if (gAlarmState != ALARM_STATE_OFF) {
 #ifdef ENABLE_TX1750

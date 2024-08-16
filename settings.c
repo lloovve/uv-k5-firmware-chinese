@@ -36,6 +36,7 @@ static const uint32_t gDefaultFrequencyTable[] =
         };
 
 EEPROM_Config_t gEeprom={0};
+ int               key_dir;
 
 void SETTINGS_InitEEPROM(void)
 {
@@ -58,7 +59,7 @@ void SETTINGS_InitEEPROM(void)
     // 0E78..0E7F
     EEPROM_ReadBuffer(0x0E78, Data, 8);
     gEeprom.BACKLIGHT_MAX 		  = (Data[0] & 0xF) <= 10 ? (Data[0] & 0xF) : 10;
-    //gEeprom.BACKLIGHT_MIN 		  = (Data[0] >> 4) < gEeprom.BACKLIGHT_MAX ? (Data[0] >> 4) : 0;
+    key_dir 		  = (Data[0] >> 4) !=0xA ? -1 : 1;
 #ifdef ENABLE_BLMIN_TMP_OFF
     gEeprom.BACKLIGHT_MIN_STAT	  = BLMIN_STAT_ON;
 #endif
@@ -173,7 +174,7 @@ void SETTINGS_InitEEPROM(void)
     gEeprom.DTMF_SEPARATE_CODE           = DTMF_ValidateCodes((char *)(Data + 1), 1) ? Data[1] : '*';
 	gEeprom.DTMF_GROUP_CALL_CODE         = DTMF_ValidateCodes((char *)(Data + 2), 1) ? Data[2] : '#';
 	gEeprom.DTMF_DECODE_RESPONSE         = (Data[3] <   4) ? Data[3] : 0;
-	gEeprom.DTMF_auto_reset_time         = (Data[4] <  61) ? Data[4] : (Data[4] >= 5) ? Data[4] : 10;
+gEeprom.DTMF_auto_reset_time = (Data[4] < 61 && Data[4] >= 5) ? Data[4] : 10;
 #endif
     gEeprom.DTMF_PRELOAD_TIME            = (Data[5] < 101) ? Data[5] * 10 : 300;
     gEeprom.DTMF_FIRST_CODE_PERSIST_TIME = (Data[6] < 101) ? Data[6] * 10 : 100;
@@ -382,15 +383,16 @@ void SETTINGS_FetchChannelName(char *s, const int channel)
         return;
 //    EEPROM_ReadBuffer(0x0F50 + (channel * 16), s + 0, 8);
 
-#if ENABLE_CHINESE_FULL==4
+#if ENABLE_CHINESE_FULL==4 && !defined(ENABLE_ENGLISH)
+
     EEPROM_ReadBuffer(0x0F50 + (channel * 16), s, 16);
-//    EEPROM_ReadBuffer(0x0F58 + (channel * 16), s + 8, 8);
     int i;
     for (i = 0; i < 16; i++)
         if (!((s[i] >= 32 && s[i] <= 127)||(
-        s[i]>=0x80&&s[i]<=0x9b&&i!=15&&s[i+1]!=0)
+        s[i]>=0xb0&&s[i]<=0xf7&&i!=15&&s[i+1]!=0)
         ))break;                // invalid char
-            else if(s[i]>=0x80&&s[i]<=0x9b&&i!=15&&s[i+1]!=0) i++;
+            else if(s[i]>=0xb0&&s[i]<=0xf7&&i!=15&&s[i+1]!=0) i++;
+
 #else
     EEPROM_ReadBuffer(0x0F50 + (channel * 16), s, 10);
 //    EEPROM_ReadBuffer(0x0F58 + (channel * 16), s + 8, 2);
@@ -524,7 +526,9 @@ void SETTINGS_SaveSettings(void)
     State[7] = gEeprom.MIC_SENSITIVITY;
     EEPROM_WriteBuffer(0x0E70, State,8);
 
-    State[0] = (/*gEeprom.BACKLIGHT_MIN*/0 << 4) + gEeprom.BACKLIGHT_MAX;
+//   		  = (Data[0] >> 4) ==0xA ? -1 : 1;
+
+    State[0] = ( key_dir ==-1?0xB0:0xA0 ) + gEeprom.BACKLIGHT_MAX;
     State[1] = gEeprom.CHANNEL_DISPLAY_MODE;
     State[2] = gEeprom.CROSS_BAND_RX_TX;
     State[3] = gEeprom.BATTERY_SAVE;

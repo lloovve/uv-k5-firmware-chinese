@@ -130,10 +130,20 @@ typedef struct SpectrumSettings {
     bool backlightState;
 } SpectrumSettings;
 
+typedef enum {
+    KEY_STATE_IDLE,
+    KEY_STATE_PRESSED,
+    KEY_STATE_HELD,
+    KEY_STATE_RELEASED
+} KeyState_t;
+
 typedef struct KeyboardState {
     KEY_Code_t current;
     KEY_Code_t prev;
     uint8_t counter;
+    KeyState_t state;
+    bool gRepeatHeld;
+
 } KeyboardState;
 
 typedef struct ScanInfo {
@@ -150,9 +160,21 @@ typedef struct PeakInfo {
     uint32_t f;
     uint16_t i;
 } PeakInfo;
-
-void APP_RunSpectrum(void);
-
+extern uint32_t tempFreq;
+extern char freqInputString[11];
+extern uint8_t freqInputIndex ;
+extern uint8_t freqInputDotIndex ;
+ void ResetFreqInput() ;
+void UpdateFreqInput(KEY_Code_t key) ;
+ void RenderFreqInput() ;
+ void FreqInput() ;
+extern KEY_Code_t freqInputArr[10];
+ void APP_RunSpectrum(void);
+ void DrawPower();
+#ifdef ENABLE_DOPPLER
+extern bool DOPPLER_MODE;
+void RTCHandler();
+#endif
 #endif /* ifndef SPECTRUM_H */
 
 // vim: ft=c

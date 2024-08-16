@@ -13,7 +13,7 @@
  *     See the License for the specific language governing permissions and
  *     limitations under the License.
  */
-
+#include "driver/eeprom.h"
 #include <string.h>
 #include <stdlib.h>  // abs()
 #include "bitmaps.h"
@@ -60,7 +60,7 @@ const t_menu_item MenuList[] =
                 {/*"TxOffs",*/ VOICE_ID_TX_OFFSET_FREQUENCY, MENU_OFFSET, 频差频率}, // was "OFFSET"
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-{/*"W/N",*/    VOICE_ID_CHANNEL_BANDWIDTH,             MENU_W_N           ,宽窄带},
+                {/*"W/N",*/    VOICE_ID_CHANNEL_BANDWIDTH,             MENU_W_N           ,宽窄带},
 #endif
 
                 {/*"Scramb",*/ VOICE_ID_SCRAMBLER_ON, MENU_SCR, 加密}, // was "SCR"
@@ -77,8 +77,8 @@ const t_menu_item MenuList[] =
                 {/*"BatSav",*/ VOICE_ID_SAVE_MODE, MENU_SAVE, 省电模式}, // was "SAVE"
                 {/*"Mic",*/    VOICE_ID_INVALID, MENU_MIC, 麦克风增益},
                 {/*"ChDisp",*/ VOICE_ID_INVALID, MENU_MDF, 信道显示模式}, // was "MDF"
-#if ENABLE_CHINESE_FULL==4
-                   {/*"POnMsg",*/ VOICE_ID_INVALID,                       MENU_PONMSG        ,开机显示},
+#if ENABLE_CHINESE_FULL == 4
+                {/*"POnMsg",*/ VOICE_ID_INVALID,                       MENU_PONMSG        ,开机显示},
 #endif
                 {/*"BackLt",*/ VOICE_ID_INVALID, MENU_ABR, 自动背光}, // was "ABR"
                 {/*"BLMax",*/  VOICE_ID_INVALID, MENU_ABR_MAX, 背光亮度},
@@ -145,12 +145,18 @@ const t_menu_item MenuList[] =
                 {/*"Reset",*/  VOICE_ID_INITIALISATION, MENU_RESET,
                                参数复位}, // might be better to move this to the hidden menu items ?
 
-                   {/*"",*/       VOICE_ID_INVALID,                       0xff               ,"\x00"}  // end of list - DO NOT delete or move this this
+                {/*"",*/       VOICE_ID_INVALID, 0xff, "\x00"}  // end of list - DO NOT delete or move this this
         };
 
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
-#if ENABLE_CHINESE_FULL==0
+#if ENABLE_CHINESE_FULL==0 || defined(ENABLE_ENGLISH)
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_W_N[][7] =//7
+
+#else
 const char gSubMenu_W_N[][3] =//7
+
+#endif
 #else
         const char gSubMenu_W_N[][5] =//7
 #endif
@@ -168,11 +174,14 @@ const char gSubMenu_PONMSG[][5]={
         信息
 };
 #endif
-#if ENABLE_CHINESE_FULL != 4
-const char gSubMenu_SFT_D[][10] =//4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_SFT_D[][4] =
+
 #else
-
-
+const char gSubMenu_SFT_D[][10] =//4
+#endif
+#else
         const char gSubMenu_SFT_D[][16] =//4
 #endif
         {
@@ -186,8 +195,14 @@ const char gSubMenu_SFT_D[][10] =//4
         };
 
 
-#if ENABLE_CHINESE_FULL != 4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_OFF_ON[][4] =
+
+#else
 const char gSubMenu_OFF_ON[][3] =//4
+#endif
+
 #else
         const char gSubMenu_OFF_ON[][5] =//4
 #endif
@@ -197,7 +212,8 @@ const char gSubMenu_OFF_ON[][3] =//4
                 关闭,
                 开启
         };
-#if ENABLE_CHINESE_FULL != 4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+
 const char gSubMenu_SAVE[][4] =//4
 #else
         const char gSubMenu_SAVE[][6] =//4
@@ -216,8 +232,8 @@ const char gSubMenu_SAVE[][4] =//4
                 四级
 
         };
-#if ENABLE_CHINESE_FULL != 4
-const char gSubMenu_TOT[][5] = //7
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+const char gSubMenu_TOT[][7] = //7
 #else
         const char gSubMenu_TOT[][6] = //7
 #endif
@@ -270,8 +286,14 @@ const char gSubMenu_VOICE[][4] =
     "ENG"
 };
 #endif
-#if ENABLE_CHINESE_FULL != 4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_SC_REV[][8] =//8
+
+#else
 const char gSubMenu_SC_REV[][10] =//8
+#endif
+
 #else
         const char gSubMenu_SC_REV[][18] =//8
 #endif
@@ -305,8 +327,14 @@ const char gSubMenu_AL_MOD[][5] =
 };
 #endif
 #ifdef ENABLE_DTMF_CALLING
-#if ENABLE_CHINESE_FULL!=4
+#if ENABLE_CHINESE_FULL!=4 || defined(ENABLE_ENGLISH)
+
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_D_RSP[][11] =//11
+
+#else
 const char gSubMenu_D_RSP[][10] =//11
+#endif
 #else
 const char gSubMenu_D_RSP[][18] =//11
 #endif
@@ -337,8 +365,15 @@ const char *const gSubMenu_PTT_ID[] =
         };
 
 
-#if ENABLE_CHINESE_FULL != 4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+
+
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_ROGER[][15] =
+
+#else
 const char gSubMenu_ROGER[][13] =
+#endif
 #else
         const char gSubMenu_ROGER[][15] =
 #endif
@@ -354,8 +389,15 @@ const char gSubMenu_ROGER[][13] =
                 MDC首尾音,
                 MDC首音加ROGER
         };
-#if ENABLE_CHINESE_FULL != 4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_RESET[][4] =//4
+
+#else
 const char gSubMenu_RESET[][6] =//4
+#endif
+
 #else
         const char gSubMenu_RESET[][11] =//4
 #endif
@@ -372,15 +414,20 @@ const char *const gSubMenu_F_LOCK[] =
                 "FCC HAM\n144-148\n420-450",
                 "CE HAM\n144-146\n430-440",
                 "GB HAM\n144-148\n430-440",
-                "137-174\n400-430",
-                "137-174\n400-438",
+
 //                "DISABLE\nALL",
 //                "UNLOCK\nALL",
                 禁用全部,
                 解锁全部,
         };
-#if ENABLE_CHINESE_FULL != 4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_BACKLIGHT[][7] =//7
+
+#else
 const char gSubMenu_BACKLIGHT[][5] =//7
+#endif
 #else
         const char gSubMenu_BACKLIGHT[][6] =//7
 #endif
@@ -403,8 +450,15 @@ const char gSubMenu_BACKLIGHT[][5] =//7
                 开启
 
         };
-#if ENABLE_CHINESE_FULL != 4
+#if ENABLE_CHINESE_FULL != 4 || defined(ENABLE_ENGLISH)
+
+
+#ifdef ENABLE_ENGLISH
+const char gSubMenu_RX_TX[][6] =//6
+
+#else
 const char gSubMenu_RX_TX[][7] =//6
+#endif
 #else
         const char gSubMenu_RX_TX[][12] =//6
 #endif
@@ -457,7 +511,9 @@ const char gSubMenu_SCRAMBLER[][7] =
 const t_sidefunction SIDEFUNCTIONS[] =
         {
                {关闭, ACTION_OPT_NONE},
+#ifdef ENABLE_FLASHLIGHT
                {手电, ACTION_OPT_FLASHLIGHT},
+#endif
                {切换发射功率, ACTION_OPT_POWER},
                {监听, ACTION_OPT_MONITOR},
                {扫描, ACTION_OPT_SCAN},
@@ -480,8 +536,8 @@ const t_sidefunction SIDEFUNCTIONS[] =
                {DTMF解码, ACTION_OPT_D_DCD},
                {切换宽窄带, ACTION_OPT_WIDTH},
 #ifdef ENABLE_SIDEFUNCTIONS_SEND
-               {A信道发射, ACTION_OPT_SEND_A},
-               {B信道发射, ACTION_OPT_SEND_B},
+               {主信道发射, ACTION_OPT_SEND_CURRENT},
+               {副信道发射, ACTION_OPT_SEND_OTHER},
 #endif
 #ifdef ENABLE_BLMIN_TMP_OFF
                 {"BLMIN\nTMP OFF",  ACTION_OPT_BLMIN_TMP_OFF}, 		//BackLight Minimum Temporay OFF
@@ -495,6 +551,7 @@ bool gIsInSubMenu;
 uint8_t gMenuCursor;
 
 int UI_MENU_GetCurrentMenuId() {
+
     if (gMenuCursor < ARRAY_SIZE(MenuList))
         return MenuList[gMenuCursor].menu_id;
     else
@@ -546,13 +603,38 @@ void UI_DisplayMenu(void) {
     //const void *BITMAP_CurrentIndicator = BITMAP_MARKER;
 
     if (gIsInSubMenu)
-        memmove(gFrameBuffer[2] + 40, BITMAP_VFO_Default, sizeof(BITMAP_VFO_Default));
+        memmove(gFrameBuffer[2] + 41, BITMAP_VFO_Default, sizeof(BITMAP_VFO_Default));
+#ifndef ENABLE_MDC1200
+    uint8_t add = 1;
 
-    // draw the menu index number/count绘制菜单索引号/总数 ：
+    if (gMenuCursor + 1 >= 26)
+        add = 0;
+
+    sprintf(String, "%2u/%u", add + gMenuCursor, gMenuListCount - 1);
+
+#else
     sprintf(String, "%2u/%u", 1 + gMenuCursor, gMenuListCount);
+#endif
+
+#ifdef ENABLE_PINYIN //拼音取消显示
+    if (!(UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gIsInSubMenu && gIsInSubMenu && edit_index >= 0))
+#endif
     UI_PrintStringSmall(String, 2, 0, 6);
-//    UI_ShowChineseMenu();
-    UI_ShowChineseMenu();
+#ifdef ENABLE_PINYIN//拼音取消显示
+    if (!(UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gIsInSubMenu && edit_index >= 0))
+#endif
+
+
+#ifdef ENABLE_ENGLISH
+    {
+    uint8_t size_menu = strlen(MenuList[gMenuCursor].name)*7;
+    UI_PrintStringSmall(MenuList[gMenuCursor].name, size_menu < 48 ? (48 - size_menu) / 2 : 0, 0, 0);
+    }
+#else
+    {
+        UI_ShowChineseMenu();
+    }
+#endif
 
 #else
     {	// new menu layout .. experimental & unfinished
@@ -655,10 +737,30 @@ void UI_DisplayMenu(void) {
 
 #endif
 
+
+#if ENABLE_CHINESE_FULL == 0 || defined(ENABLE_ENGLISH)
             else if (gSubMenuSelection < 105)
                 sprintf(String, "D%03oN", DCS_Options[gSubMenuSelection - 1]);
             else
                 sprintf(String, "D%03oI", DCS_Options[gSubMenuSelection - 105]);
+#else
+
+            else if (gSubMenuSelection < 105)
+                {
+                  uint8_t read_tmp[2];
+         EEPROM_ReadBuffer(0x02C64+(gSubMenuSelection - 1)*2, read_tmp, 2);
+         uint16_t DCS_Options_read=read_tmp[0]|(read_tmp[1]<<8);
+             sprintf(String, "D%03oN", DCS_Options_read);
+             }
+         else{
+               uint8_t read_tmp[2];
+         EEPROM_ReadBuffer(0x02C64+(gSubMenuSelection - 105)*2, read_tmp, 2);
+         uint16_t DCS_Options_read=read_tmp[0]|(read_tmp[1]<<8);
+             sprintf(String, "D%03oI",DCS_Options_read);
+             }
+
+#endif
+
             break;
 
         case MENU_R_CTCS:
@@ -674,9 +776,19 @@ void UI_DisplayMenu(void) {
 
 #endif
 
-            else
+            else {
+#if ENABLE_CHINESE_FULL == 0 || defined(ENABLE_ENGLISH)
                 sprintf(String, "%u.%uHz", CTCSS_Options[gSubMenuSelection - 1] / 10,
                         CTCSS_Options[gSubMenuSelection - 1] % 10);
+#else
+                uint8_t read_tmp[2];
+            EEPROM_ReadBuffer(0x02C00+(gSubMenuSelection - 1)*2, read_tmp, 2);
+            uint16_t CTCSS_Options_read=read_tmp[0]|(read_tmp[1]<<8);
+            sprintf(String, "%u.%uHz", CTCSS_Options_read / 10,CTCSS_Options_read % 10);
+
+#endif
+            }
+
             break;
         }
 
@@ -701,10 +813,10 @@ void UI_DisplayMenu(void) {
             break;
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-        case MENU_W_N:
+            case MENU_W_N:
 
-            strcpy(String, gSubMenu_W_N[gSubMenuSelection]);
-            break;
+                strcpy(String, gSubMenu_W_N[gSubMenuSelection]);
+                break;
 #endif
 
         case MENU_SCR:
@@ -767,7 +879,7 @@ void UI_DisplayMenu(void) {
 #ifdef ENABLE_DTMF_CALLING
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-             case MENU_D_DCD:
+            case MENU_D_DCD:
 #endif
 #endif
         case MENU_D_LIVE_DEC:
@@ -801,7 +913,7 @@ void UI_DisplayMenu(void) {
                 UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 5);
             }
             SETTINGS_FetchChannelName(String, gSubMenuSelection);
-#if ENABLE_CHINESE_FULL==4
+#if ENABLE_CHINESE_FULL == 4 && !defined(ENABLE_ENGLISH)
             show_move_flag=1;
 #endif
             UI_PrintStringSmall(String[0] ? String : "--", menu_item_x1 - 12, menu_item_x2, 3);
@@ -809,42 +921,40 @@ void UI_DisplayMenu(void) {
             break;
         }
 #ifdef ENABLE_MDC1200
-            //            case MENU_MDC_ID:
-            //            ///    char mdc_id_str[4];
-            //    sprintf(String, "%04X", gEeprom.MDC1200_ID); // %04X确保输出是4个字符长度的十六进制数
-            //          //  strcpy(String, id);
-            //            break;
-
-                    case MENU_MDC_ID:
+            case MENU_MDC_ID:
+            {
+#ifdef ENABLE_MDC1200_EDIT
+                    if(gIsInSubMenu){    // show the channel name being edited
+                    UI_PrintStringSmall(edit, menu_item_x1, menu_item_x2, 3);
+                    if (edit_index < 4)
+                        UI_PrintStringSmall("^", menu_item_x1+(((menu_item_x2 - menu_item_x1) - (28)) + 1) / 2 + (7 * edit_index), 0, 4);  // show the cursor
+                }else
                     {
+#endif
+                    sprintf(String, "%04X", gEeprom.MDC1200_ID); // %04X确保输出是4个字符长度的十六进制数
+                    UI_PrintStringSmall(String, menu_item_x1, menu_item_x2, 3);//4
 
-                            if(gIsInSubMenu){    // show the channel name being edited
+#ifdef ENABLE_MDC1200_EDIT
 
-
-                            UI_PrintStringSmall(edit, menu_item_x1, menu_item_x2, 3);
-                            if (edit_index < 4)
-                                UI_PrintStringSmall("^", menu_item_x1+(((menu_item_x2 - menu_item_x1) - (28)) + 1) / 2 + (7 * edit_index), 0, 4);  // show the cursor
-                        }else
-                            {
-                               //     sprintf(edit, "%04lX", gEeprom.MDC1200_ID); // %04X确保输出是4个字符长度的十六进制数
-                                                  sprintf(String, "%04X", gEeprom.MDC1200_ID); // %04X确保输出是4个字符长度的十六进制数
-                        edit_index = -1;
-
-                                    edit[0]=String[0];
-                                    edit[1]=String[1];
-                                    edit[2]=String[2];
-                                    edit[3]=String[3];
-
-
-                            UI_PrintStringSmall(String, menu_item_x1, menu_item_x2, 3);//4
-                            }
-                        already_printed = true;
-                        break;
+                    edit_index = -1;
+                    edit[0]=String[0];
+                    edit[1]=String[1];
+                    edit[2]=String[2];
+                    edit[3]=String[3];
+                      edit[4]='\0';
+#endif
+#ifdef ENABLE_MDC1200_EDIT
                     }
 #endif
-        case MENU_MEM_NAME: {
-            const bool valid = RADIO_CheckValidChannel(gSubMenuSelection, false, 1);
+                already_printed = true;
+                break;
+            }
+#endif
+        case MENU_MEM_NAME: { //输入法显示
+//ok
 
+
+            const bool valid = RADIO_CheckValidChannel(gSubMenuSelection, false, 1);
             UI_GenerateChannelStringEx(String, valid, gSubMenuSelection);
             UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 2);
 
@@ -857,32 +967,213 @@ void UI_DisplayMenu(void) {
                 if (!gIsInSubMenu || edit_index < 0) {    // show the channel name
                     SETTINGS_FetchChannelName(String, gSubMenuSelection);
                     char *pPrintStr = String[0] ? String : "--";
-#if ENABLE_CHINESE_FULL == 4
+#if ENABLE_CHINESE_FULL == 4 && !defined(ENABLE_ENGLISH)
                     show_move_flag=1;
 #endif
                     UI_PrintStringSmall(pPrintStr, menu_item_x1 - 12, menu_item_x2, 3);
-#if ENABLE_CHINESE_FULL == 4
 
-                    } else if (CHINESE_JUDGE(tmp_name, strlen(tmp_name))) {
+                }
+
+//
+#if ENABLE_CHINESE_FULL == 4 && !defined(ENABLE_PINYIN) && !defined(ENABLE_ENGLISH)
+
+                    else if (CHINESE_JUDGE(tmp_name, strlen(tmp_name))) {
                     edit_index = -1;
                 }else if (!CHINESE_JUDGE(tmp_name, strlen(tmp_name))) {    // show the channel name being edited
 #else
-                }else{
+                else {
 #endif
 
+
+#if ENABLE_CHINESE_FULL == 4 && !defined(ENABLE_ENGLISH)
+                    show_move_flag=1;
+#endif
                     UI_PrintStringSmall(edit, menu_item_x1 - 12, menu_item_x2, 3);
 
-                    if (edit_index < MAX_EDIT_INDEX)
-                        UI_PrintStringSmall("^",           menu_item_x1 - 12+7*edit_index+(((menu_item_x2 - menu_item_x1 + 12 ) - (7*MAX_EDIT_INDEX)) + 1) / 2 , 0, 4);  // show the cursor
+                    if (edit_index < MAX_EDIT_INDEX) {
+//#if ENABLE_CHINESE_FULL == 4
+//                        show_move_flag=1;
+//#endif
+
+#ifdef ENABLE_PINYIN
+                        for (int j = 0; j < MAX_EDIT_INDEX; ++j) {
+                            if (edit[j] >= 0xb0 && j != MAX_EDIT_INDEX - 1) {
+                                edit_chn[j] = 1;
+                                j++;
+                                edit_chn[j] = 2;
+                            } else edit_chn[j] = 0;
+                        }
+                        uint8_t sum_pxl = 0;
+                        uint8_t cnt_chn = 0;
+                        for (int j = 0; j < edit_index; j++) {
+                            if (edit_chn[j] == 1) {
+                                sum_pxl += 13;
+                                j++;
+                                cnt_chn++;
+                            } else
+                                sum_pxl += 7;
+                        }
+                        uint8_t add_point = edit_chn[edit_index] == 1 ? 6 : 3;
+                        gFrameBuffer[4][menu_item_x1 - 12 + sum_pxl +
+                                        (((menu_item_x2 - menu_item_x1 + 12) -
+                                          (7 * (MAX_EDIT_INDEX - 2 * cnt_chn) + 13 * cnt_chn)) + 1) / 2 + add_point] |=
+                                3 << 6;
+                        gFrameBuffer[4][menu_item_x1 - 12 + sum_pxl +
+                                        (((menu_item_x2 - menu_item_x1 + 12) -
+                                          (7 * (MAX_EDIT_INDEX - 2 * cnt_chn) + 13 * cnt_chn)) + 1) / 2 + add_point +
+                                        1] |=
+                                3 << 6;
+#else
+
+                        gFrameBuffer[4][menu_item_x1 - 12 + 7 * edit_index +
+                                        (((menu_item_x2 - menu_item_x1 + 12) - (7 * MAX_EDIT_INDEX)) + 1) / 2 + 3] |=
+                                3 << 6;
+                        gFrameBuffer[4][menu_item_x1 - 12 + 7 * edit_index +
+                                        (((menu_item_x2 - menu_item_x1 + 12) - (7 * MAX_EDIT_INDEX)) + 1) / 2 + 4] |=
+                                3 << 6;
+
+#endif
+
+#ifdef ENABLE_PINYIN //拼音显示
+                        //OK
+                        if (INPUT_MODE == 0)memcpy(&gFrameBuffer[3][0], BITMAP_CN, 7);
+                        else if (INPUT_MODE == 1) UI_PrintStringSmall("A", 0, 0, 3);
+                        else if (INPUT_MODE == 2) UI_PrintStringSmall("1", 0, 0, 3);
+                        else if (INPUT_MODE == 3) UI_PrintStringSmall("*", 0, 0, 3);
+                        if (INPUT_MODE == 0) {
+                            sprintf(String, "%06d", PINYIN_CODE);
+                            GUI_DisplaySmallest(String, 0, 18, 0, 1);
+                            uint8_t tmp[12];
+
+
+                            if (INPUT_STAGE >= 1)//显示拼音
+                            {
+  uint8_t num=(PINYIN_NUM_SELECT ) / 3;
+                    if ((PINYIN_NOW_NUM + 2) / 3 >1+num )memcpy(&gFrameBuffer[1][123], BITMAP_ARRAY_DOWN, 5);
+                    if (num)memcpy(&gFrameBuffer[0][123], BITMAP_ARRAY_UP, 5);
+
+                                if (PINYIN_SEARCH_MODE == 1)//准确的组合
+                                {
+
+
+
+//OK
+                                    uint8_t HAVE_PINYIN =
+                                            PINYIN_NOW_NUM - PINYIN_NUM_SELECT / 3 * 3 > 3 ? 3 : PINYIN_NOW_NUM -
+                                                                                                 PINYIN_NUM_SELECT / 3 *
+                                                                                                 3;//目前有多少个拼音
+
+//OK
+//                                    show_uint32(PINYIN_NOW_NUM,0);
+//                                    sprintf(String,"%d",PINYIN_NUM_SELECT);
+//                                    UI_PrintStringSmall(String, 0, 0, 4);
+//                                    show_uint32(PINYIN_NOW_NUM,1);
+//                                    show_uint32(HAVE_PINYIN,1);
+                                    for (int j = 0; j < HAVE_PINYIN; ++j) {
+                                        EEPROM_ReadBuffer(
+                                                PINYIN_NOW_INDEX * 128 + 0X20000 + 16 + PINYIN_NUM_SELECT / 3 * 3 * 16 +
+                                                j * 16, tmp, 6);
+                                        memcpy(&String[6 * j], tmp, 6);//0 1 2 3 4 5
+                                    }
+//#include "ui/menu.h"
+//#include "ui/helper.h"
+//
+//                                    if (PINYIN_CODE == 200000 && test_flag) {
+//                                        show_uint32(edit_index, 0);
+//                                        show_uint32(gIsInSubMenu, 1);
+//                                        show_uint32(1, 2);
+//                                        while (1);
+//                                    }
+                                    //NOT OK
+                                    String[6 * HAVE_PINYIN] = 0;
+                                    UI_PrintStringSmall(String, 0, 0, 0);
+//NOT OK
+
+                                }
+                            }
+                            if (INPUT_STAGE == 2) {
+
+                                if (PINYIN_SEARCH_MODE == 1)//准确的组合
+                                {
+                                    memcpy(&gFrameBuffer[1][(PINYIN_NUM_SELECT % 3) * 7 * 6], BITMAP_ARRAY_UP, 5);
+
+                                    uint8_t SHOW_NUM =
+                                            CHN_NOW_NUM - CHN_NOW_PAGE * 6 > 6 ? 6 : CHN_NOW_NUM - CHN_NOW_PAGE * 6;
+                                    EEPROM_ReadBuffer(CHN_NOW_ADD + CHN_NOW_PAGE * 6 * 2, tmp, SHOW_NUM * 2);
+//                                    show_uint32(PINYIN_NOW_INDEX * 128 + 0X20000 + 16 + PINYIN_NUM_SELECT * 16 + 6, 5);
+                                    for (int j = 0; j < SHOW_NUM; ++j) {
+                                        String[j * 3] = '0' + j + 1;
+                                        String[j * 3 + 1] = tmp[j * 2];
+                                        String[j * 3 + 2] = tmp[j * 2 + 1];
+                                    }
+                                    String[SHOW_NUM * 3] = 0;
+                                    show_move_flag = 1;
+
+                                    UI_PrintStringSmall(String, 0, 0, 5);
+                                    if (CHN_NOW_PAGE) memcpy(&gFrameBuffer[5][123], BITMAP_ARRAY_UP, 5);
+                                    if ((CHN_NOW_PAGE + 1) * 6 < CHN_NOW_NUM)
+                                        memcpy(&gFrameBuffer[6][123], BITMAP_ARRAY_DOWN, 5);
+                                }
+                            }
+//NOT OK
+
+
+                        } else if (INPUT_MODE == 1) {
+                            if (INPUT_STAGE == 1) {
+                                char tmp[22] = {0};
+                                if (num_size[INPUT_SELECT - 2] == 3) {
+                                    sprintf(tmp, "1.%c 2.%c 3.%c", num_excel[INPUT_SELECT - 2][0],
+                                            num_excel[INPUT_SELECT - 2][1], num_excel[INPUT_SELECT - 2][2]);
+                                    UI_PrintStringSmall(tmp, 0, 127, 0);
+                                    tmp[0] = '4', tmp[4] = '5', tmp[8] = '6';//flash?
+                                    tmp[2] -= 32, tmp[6] -= 32, tmp[10] -= 32;
+
+                                } else {
+                                    sprintf(tmp, "1.%c 2.%c 3.%c 4.%c", num_excel[INPUT_SELECT - 2][0],
+                                            num_excel[INPUT_SELECT - 2][1], num_excel[INPUT_SELECT - 2][2],
+                                            num_excel[INPUT_SELECT - 2][3]);
+                                    UI_PrintStringSmall(tmp, 0, 127, 0);
+
+                                    tmp[0] ='5', tmp[4] = '6', tmp[8] = '7', tmp[12] = '8';
+                                    tmp[2] -= 32, tmp[6] -= 32, tmp[10] -= 32, tmp[14] -= 32;
+                                }
+                                                                    UI_PrintStringSmall(tmp, 0, 127, 1);
+
+                            }
+                        }
+#endif
+
+                    }
                 }
+
+//NOT OK
+//                sprintf(String, "%d", edit_index);
+//                UI_PrintStringSmall(String, 0, 0, 1);
+//                sprintf(String, "%d", gIsInSubMenu);
+//                UI_PrintStringSmall(String, 20, 0, 1);
+//
+//                sprintf(String,"%d",edit[2]);
+//                UI_PrintStringSmall(String, 0, 0, 3);
+
 
                 if (!gAskForConfirmation) {    // show the frequency so that the user knows the channels frequency
                     sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
-                    UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 5);
+#ifdef ENABLE_PINYIN
+
+                    if (edit_index == MAX_EDIT_INDEX - 1 && INPUT_MODE == 0)
+                        INPUT_MODE = 1;
+                    if (!(gIsInSubMenu && edit_index >= 0))
+
+#endif
+                    {
+//                        show_move_flag = 1;
+                        UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 5);
+                    }
                 }
             }
 
             already_printed = true;
+
             break;
         }
 
@@ -1023,11 +1314,11 @@ void UI_DisplayMenu(void) {
                     memcpy(String, Contact, 8);
                 break;
 #endif
-#if ENABLE_CHINESE_FULL==4
+#if ENABLE_CHINESE_FULL == 4
 
-        case MENU_PONMSG:
-            strcpy(String, gSubMenu_PONMSG[gSubMenuSelection]);
-            break;
+            case MENU_PONMSG:
+                strcpy(String, gSubMenu_PONMSG[gSubMenuSelection]);
+                break;
 #endif
         case MENU_ROGER:
             strcpy(String, gSubMenu_ROGER[gSubMenuSelection]);
@@ -1084,13 +1375,13 @@ void UI_DisplayMenu(void) {
             break;
 
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
-        case MENU_F1SHRT:
-        case MENU_F1LONG:
-        case MENU_F2SHRT:
-        case MENU_F2LONG:
-        case MENU_MLONG:
-            strcpy(String, gSubMenu_SIDEFUNCTIONS[gSubMenuSelection].name);
-            break;
+            case MENU_F1SHRT:
+            case MENU_F1LONG:
+            case MENU_F2SHRT:
+            case MENU_F2LONG:
+            case MENU_MLONG:
+                strcpy(String, gSubMenu_SIDEFUNCTIONS[gSubMenuSelection].name);
+                break;
 #endif
 
     }
@@ -1158,7 +1449,7 @@ void UI_DisplayMenu(void) {
         // channel number
         UI_PrintStringSmall(pPrintStr, menu_item_x1 - 12, menu_item_x2, 2);
 
-#if ENABLE_CHINESE_FULL==4
+#if ENABLE_CHINESE_FULL == 4 && !defined(ENABLE_ENGLISH)
         show_move_flag=1;
 #endif
         SETTINGS_FetchChannelName(String, gSubMenuSelection);
@@ -1171,18 +1462,17 @@ void UI_DisplayMenu(void) {
         } else {
             UI_PrintStringSmall(pPrintStr, menu_item_x1 - 12, menu_item_x2, 4);
 
-
-            if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH1[i])) {
-                sprintf(String, "PRI%d:%u", 1, gEeprom.SCANLIST_PRIORITY_CH1[i] + 1);
-                UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 3);
-            }
-
+//
+//            if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH1[i])) {
+//                sprintf(String, "PRI%d:%u", 1, gEeprom.SCANLIST_PRIORITY_CH1[i] + 1);
+//                UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 3);
+//            }
+//
 //            if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH2[i])) {
-//                sprintf(String, "PRI2:%u", gEeprom.SCANLIST_PRIORITY_CH2[i] + 1);
-            if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH2[i])) {
-                sprintf(String, "PRI%d:%u", 2, gEeprom.SCANLIST_PRIORITY_CH2[i] + 1);
-                UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 6);
-            }
+//                sprintf(String, "PRI%d:%u", 2, gEeprom.SCANLIST_PRIORITY_CH2[i] + 1);
+//                UI_PrintStringSmall(String, menu_item_x1 - 12, menu_item_x2, 6);
+//            }
+
         }
     }
 
@@ -1224,7 +1514,10 @@ void UI_DisplayMenu(void) {
     if ((UI_MENU_GetCurrentMenuId() == MENU_RESET ||
          UI_MENU_GetCurrentMenuId() == MENU_MEM_CH ||
          UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME ||
+         #ifdef ENABLE_MDC1200_EDIT
+
          UI_MENU_GetCurrentMenuId() == MENU_MDC_ID ||
+         #endif
          UI_MENU_GetCurrentMenuId() == MENU_DEL_CH) && gAskForConfirmation) {    // display confirmation
         char *pPrintStr = (gAskForConfirmation == 1) ? "SURE?" : "WAIT!";
         if ((UI_MENU_GetCurrentMenuId() == MENU_MEM_CH || UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME ||
@@ -1241,14 +1534,24 @@ void UI_DisplayMenu(void) {
 
 //
 
-
+#ifndef ENABLE_ENGLISH
 void UI_ShowChineseMenu() {
 
 
     uint8_t size_menu = 0;
     uint8_t cnt_menu = 0;
+
+
+#if ENABLE_CHINESE_FULL == 4 && !defined(ENABLE_ENGLISH)
+    uint8_t name[15];
+    name[15] = 0;
+    EEPROM_ReadBuffer(0x028B0 + gMenuCursor * 14, name, 14);
+    for (cnt_menu = 0; cnt_menu < 7 && name[cnt_menu]!= 0; cnt_menu++) {
+        if (is_chn(/*MenuList[gMenuCursor].name[cnt_menu]*/name[cnt_menu]) != 255)//中文
+#else
     for (cnt_menu = 0; cnt_menu < 7 && MenuList[gMenuCursor].name[cnt_menu] != 0; cnt_menu++) {
         if (is_chn(MenuList[gMenuCursor].name[cnt_menu]) != 255)//中文
+#endif
         {
             size_menu += 12;
 #if ENABLE_CHINESE_FULL != 0
@@ -1262,7 +1565,140 @@ void UI_ShowChineseMenu() {
 
     show_move_flag = 1;
 
+#if ENABLE_CHINESE_FULL == 4
+
+    UI_PrintStringSmall((const char *)name, size_menu < 48 ? (48 - size_menu) / 2 : 0, 0, 0);
+#else
+
     UI_PrintStringSmall(MenuList[gMenuCursor].name, size_menu < 48 ? (48 - size_menu) / 2 : 0, 0, 0);
 
+#endif
 
 }
+#endif
+#ifdef ENABLE_PINYIN
+uint8_t INPUT_SELECT = 0;//选择的按键
+uint8_t INPUT_MODE_LAST = 0;
+uint8_t INPUT_MODE = 0;//0中文 1英文 2数字、符号
+uint8_t INPUT_STAGE = 0;//中文：0 还没输入，不显示拼音和汉字 1输入了
+uint32_t PINYIN_CODE = 0;
+uint32_t PINYIN_CODE_INDEX = 100000;
+uint8_t PINYIN_SEARCH_INDEX = 0;
+uint8_t PINYIN_SEARCH_FOUND = 0;
+uint8_t PINYIN_SEARCH_NUM = 0;
+uint8_t PINYIN_NOW_INDEX = 0;//当前拼音组合地址
+uint8_t PINYIN_NOW_NUM = 0;
+uint8_t PINYIN_SEARCH_MODE = 0;
+uint8_t PINYIN_START_INDEX = 0;
+uint8_t PINYIN_END_INDEX = 0;
+uint8_t PINYIN_NOW_PAGE = 0;
+uint8_t PINYIN_NUM_SELECT = 0;
+uint32_t CHN_NOW_ADD = 0;
+uint8_t CHN_NOW_NUM = 0;
+uint8_t CHN_NOW_PAGE = 0;
+uint8_t edit_chn[MAX_EDIT_INDEX];
+//英语：0 未选字 1选字
+//数字：0正常模式 1按了上下的轮询模式，需要按MENU确定
+char input1[22];
+char input2[22];
+char num_excel[8][4] = {
+        {'a','b','c','\0'},
+        {'d','e','f','\0'},
+        {'g','h','i','\0'},
+        {'j','k','l','\0'},
+        {'m','n','o','\0'},
+        {'p','q','r','s'},
+        {'t','u','v','\0'},
+        {'w','x','y','z'},
+
+};
+uint8_t num_size[8]={3,3,3,3,3,4,3,4};
+
+uint32_t formatInt(uint32_t number) {//数字转拼音编码
+    uint32_t formatted = number;
+    uint32_t length = 0;
+    // 计算整数的位数
+    while (number != 0) {
+        number /= 10;
+        length++;
+    }
+    // 如果位数不足6位，则在后面补0
+    if (length < 6) {
+        for (uint8_t i = 0; i < 6 - length; ++i) {
+            formatted *= 10;
+        }
+    }
+    return formatted;
+}
+
+
+uint32_t get_num(const char *a) {//拼音转数字
+    uint32_t num = 0;
+    uint32_t bin = 100000;
+    for (unsigned int j = 0; j < strlen(a); j++) {
+        uint32_t now_num = 0;
+        for (int i = 0; i < 8; ++i) {
+            for (int k = 0; k < num_size[i]; ++k) {
+                if (num_excel[i][k] == a[j]) {
+                    now_num = i + 2;
+                    goto end_loop;
+                }
+            }
+        }
+        end_loop:
+        num += bin * now_num;
+        bin /= 10;
+    }
+    return num;
+}
+
+bool judge_belong(uint32_t a, uint32_t b)//拼音归属判断
+{
+    for (uint32_t i = 100000; i >= 1; i /= 10) {
+        if (a / i == 0)break;
+        if (a / i != b / i)return false;
+        a = a - a / i * i;
+        b = b - b / i * i;
+
+    }
+    return true;
+}
+
+uint8_t sear_pinyin_code(uint32_t target, uint8_t *pinyin_num, uint8_t *found)//返回拼音索引0~213，以及是否找到
+{
+    int left = 0;
+    int right = 213;
+    *found = 0; // 初始设定未找到
+
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+        uint8_t tmp[5];
+        EEPROM_ReadBuffer(mid * 128 + 0x20000, tmp, 5);
+        uint32_t mid_num = tmp[0] | tmp[1] << 8 | tmp[2] << 16 | tmp[3] << 24;
+        *pinyin_num = tmp[4];
+        if (mid_num == target) {
+            *found = 1; // 找到了
+            return mid;
+        } else if (target < mid_num) {
+            right = mid - 1;
+        } else {
+            left = mid + 1;
+        }
+    }
+
+    // 找不到目标值，返回比目标值大一个的值
+    if (left <= 213) {
+        uint8_t tmp[5];
+        EEPROM_ReadBuffer(left * 128 + 0x20000, tmp, 5);
+        uint32_t left_num = tmp[0] | tmp[1] << 8 | tmp[2] << 16 | tmp[3] << 24;
+
+
+        if (judge_belong(target, left_num)) {
+            return left;
+        }
+    }
+    return 255;
+
+}
+
+#endif

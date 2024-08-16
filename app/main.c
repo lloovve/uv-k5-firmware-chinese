@@ -20,7 +20,10 @@
 #include "app/app.h"
 #include "app/chFrScanner.h"
 #include "app/common.h"
-
+#include "chinese.h"
+#ifdef ENABLE_4732
+#include "app/si.h"
+#endif
 #ifdef ENABLE_FMRADIO
 #include "app/fm.h"
 #endif
@@ -45,6 +48,13 @@
 #include "ui/ui.h"
 #include <stdlib.h>
 
+#ifdef ENABLE_MESSENGER
+#include "app/messenger.h"
+#endif
+#ifdef ENABLE_DOPPLER
+#include "app/doppler.h"
+#endif
+
 void toggle_chan_scanlist(void) {    // toggle the selected channels scanlist setting
     if (SCANNER_IsScanning())
         return;
@@ -52,8 +62,8 @@ void toggle_chan_scanlist(void) {    // toggle the selected channels scanlist se
 #ifdef ENABLE_SCAN_RANGES
         gScanRangeStart = gScanRangeStart ? 0 : gTxVfo->pRX->Frequency;
         gScanRangeStop = gEeprom.VfoInfo[!gEeprom.TX_VFO].freq_config_RX.Frequency;
-		if(gScanRangeStart > gScanRangeStop)
-			SWAP(gScanRangeStart, gScanRangeStop);
+        if(gScanRangeStart > gScanRangeStop)
+            SWAP(gScanRangeStart, gScanRangeStop);
 #endif
         return;
     }
@@ -85,12 +95,9 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep) {
         case KEY_0:
 #ifdef ENABLE_FMRADIO
             ACTION_FM();
-#else
-
-
-            // TODO: make use of this function key
-
-
+#endif
+#ifdef ENABLE_4732
+            SI4732_Main();
 #endif
             break;
 
@@ -212,6 +219,9 @@ gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
                 gRequestSaveVFO   = true;
                 gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
 #elif defined(ENABLE_SPECTRUM)
+#ifdef ENABLE_DOPPLER
+                DOPPLER_MODE=0;
+#endif
                 APP_RunSpectrum();
                 gRequestDisplayScreen = DISPLAY_MAIN;
 #endif
@@ -357,8 +367,8 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
             } else if (Frequency >= BX4819_band1.upper && Frequency < BX4819_band2.lower) {
                 const uint32_t center = (BX4819_band1.upper + BX4819_band2.lower) / 2;
                 Frequency = (Frequency < center) ? BX4819_band1.upper : BX4819_band2.lower;
-            } else if (Frequency > frequencyBandTable[BAND_N_ELEM- 1].upper) {
-                Frequency = frequencyBandTable[BAND_N_ELEM- 1].upper;
+            } else if (Frequency > frequencyBandTable[BAND_N_ELEM - 1].upper) {
+                Frequency = frequencyBandTable[BAND_N_ELEM - 1].upper;
             }
 
             const FREQUENCY_Band_t band = FREQUENCY_GetBand(Frequency);
@@ -430,7 +440,21 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
 }
 
 static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld) {
+
+#include "app/menu.h"
+#ifdef ENABLE_TURN
+    if (turn_flag) {
+        turn_flag = false;
+        key_dir *= -1;
+        gRequestSaveSettings = true;
+        return;
+    }
+#endif
     if (!bKeyHeld && bKeyPressed) {    // exit key pressed
+
+
+
+
 
         gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 #ifdef ENABLE_DTMF_CALLING
@@ -441,6 +465,8 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld) {
             return;
         }
 #endif
+
+
 #ifdef ENABLE_FMRADIO
         if (!gFmRadioMode)
 #endif
@@ -488,9 +514,11 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld) {
             gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
         }
     }
+
 }
 
 static void MAIN_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
+
     if (bKeyPressed && !bKeyHeld)
         // menu key pressed
         gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
@@ -518,13 +546,16 @@ static void MAIN_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
     }
 
     if (!bKeyPressed && !gDTMF_InputMode) {    // menu key released
-        if (gWasFKeyPressed) {
-            gWasFKeyPressed = false;
-            gEeprom.BEEP_CONTROL = !gEeprom.BEEP_CONTROL;
-            gRequestSaveSettings = 1;
 
+#ifdef ENABLE_MESSENGER
+        if (gWasFKeyPressed) {
+            hasNewMessage = 0;
+            gRequestDisplayScreen = DISPLAY_MSG;
             return;
         }
+#endif
+
+
         const bool bFlag = !gInputBoxIndex;
         gInputBoxIndex = 0;
 
@@ -619,25 +650,65 @@ static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld) {
 
 static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction) {
     uint8_t Channel = gEeprom.ScreenChannel[gEeprom.TX_VFO];
+    if (gWasFKeyPressed) {
+        gWasFKeyPressed = false;
 
-    if (bKeyHeld || !bKeyPressed) {
+        if (Direction == 1) {
+            gEeprom.BEEP_CONTROL = !gEeprom.BEEP_CONTROL;
+            gRequestSaveSettings = 1;
+        }
+#ifdef ENABLE_DOPPLER
+        if (Direction==-1) {
+
+        if (!DOPPLER_FLAG) {
+            BACKLIGHT_TurnOn();
+            UI_DisplayClear();
+#ifndef ENABLE_ENGLISH
+//获取数据
+            UI_PrintStringSmall("\xD0\xB4\xC8\xEB\xCA\xFD\xBE\xDD:", 0, 127, 2);
+#else
+            UI_PrintStringSmall("GET DATA:", 0, 127, 2);
+#endif
+            UI_PrintStringSmall("k5.vicicode.com", 0, 127, 4);
+
+            ST7565_BlitFullScreen();
+            uint8_t cnt_i = 200;
+            while (cnt_i) {
+
+                SYSTEM_DelayMs(10);
+cnt_i--;
+            }
+
+        }else{
+#ifdef ENABLE_DOPPLER
+            DOPPLER_MODE=1;
+#endif
+            APP_RunSpectrum();
+            gRequestDisplayScreen = DISPLAY_MAIN;
+            }
+        }
+#endif
+        return;
+    }
+
+    if (bKeyHeld || !bKeyPressed) { // key held or released
+
         if (gInputBoxIndex > 0)
-            return;
+            return; // leave if input box active
 
         if (!bKeyPressed) {
-            if (!bKeyHeld)
-                return;
 
-            if (IS_FREQ_CHANNEL(Channel))
-                return;
 
+            if (!bKeyHeld || IS_FREQ_CHANNEL(Channel))
+                return;
+            // if released long button press and not in freq mode
 #ifdef ENABLE_VOICE
-            AUDIO_SetDigitVoice(0, gTxVfo->CHANNEL_SAVE + 1);
+            AUDIO_SetDigitVoice(0, gTxVfo->CHANNEL_SAVE + 1); // say channel number
             gAnotherVoiceID = (VOICE_ID_t)0xFE;
 #endif
-
             return;
         }
+
     } else {
         if (gInputBoxIndex > 0) {
             gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
@@ -663,7 +734,8 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction) 
                 }
 
                 gTxVfo->freq_config_RX.Frequency = frequency;
-
+                BK4819_SetFrequency(frequency);
+                BK4819_RX_TurnOn();
                 gRequestSaveChannel = 1;
                 return;
             }
@@ -708,6 +780,7 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction) 
 }
 
 void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
+    last_rx_vfo = -1;
 #ifdef ENABLE_FMRADIO
     if (gFmRadioMode && Key != KEY_PTT && Key != KEY_EXIT)
     {
@@ -736,19 +809,7 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
 //	}
 
     switch (Key) {
-        case KEY_0:
-
-        case KEY_1:
-        case KEY_2:
-        case KEY_3:
-        case KEY_4:
-        case KEY_5:
-
-        case KEY_6:
-        case KEY_7:
-        case KEY_8:
-        case KEY_9:
-
+        case KEY_0...KEY_9:
             MAIN_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
             break;
         case KEY_MENU:

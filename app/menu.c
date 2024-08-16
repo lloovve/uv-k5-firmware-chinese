@@ -55,7 +55,7 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #endif
 
-uint8_t gUnlockAllTxConfCnt;
+//uint8_t gUnlockAllTxConfCnt;
 
 #ifdef ENABLE_F_CAL_MENU
 void writeXtalFreqCal(const int32_t value, const bool update_eeprom)
@@ -85,6 +85,7 @@ void writeXtalFreqCal(const int32_t value, const bool update_eeprom)
 }
 #endif
 
+
 void MENU_StartCssScan(void) {
     SCANNER_Start(true);
     gUpdateStatus = true;
@@ -92,7 +93,55 @@ void MENU_StartCssScan(void) {
 
     gRequestDisplayScreen = DISPLAY_MENU;
 }
+#ifdef ENABLE_PINYIN
+void PINYIN_SOLVE(uint32_t tmp) {
 
+    if (INPUT_STAGE == 0) {
+        INPUT_STAGE = 1;
+    }
+    uint8_t tmp_PINYIN_SEARCH_INDEX = PINYIN_SEARCH_INDEX;
+    uint8_t tmp_PINYIN_SEARCH_NUM = PINYIN_SEARCH_NUM;
+    uint8_t tmp_PINYIN_SEARCH_FOUND = PINYIN_SEARCH_FOUND;
+
+    PINYIN_SEARCH_INDEX = sear_pinyin_code(PINYIN_CODE, &PINYIN_SEARCH_NUM,
+                                           &PINYIN_SEARCH_FOUND);
+    if (PINYIN_SEARCH_INDEX == 255 && PINYIN_SEARCH_FOUND == 0) {
+        PINYIN_CODE = tmp;
+        PINYIN_CODE_INDEX *= 10;
+        PINYIN_SEARCH_INDEX = tmp_PINYIN_SEARCH_INDEX;
+        PINYIN_SEARCH_NUM = tmp_PINYIN_SEARCH_NUM;
+        PINYIN_SEARCH_FOUND = tmp_PINYIN_SEARCH_FOUND;
+        if (PINYIN_CODE_INDEX == 100000)INPUT_STAGE = 0;
+    }
+
+        if (INPUT_STAGE) {//需要选拼音
+        if (PINYIN_SEARCH_FOUND) {
+            if (PINYIN_SEARCH_INDEX != 255) {//确实存在这个拼音组合
+                PINYIN_NOW_INDEX = PINYIN_SEARCH_INDEX;
+                PINYIN_NOW_NUM = PINYIN_SEARCH_NUM;
+                PINYIN_SEARCH_MODE = 1;
+            }
+        } else //没有这个拼音组合但是有备选
+        {
+//            PINYIN_SEARCH_MODE = 2;
+//            PINYIN_NOW_INDEX = PINYIN_SEARCH_INDEX;
+//            PINYIN_NOW_NUM = PINYIN_SEARCH_NUM;
+//            PINYIN_START_INDEX = PINYIN_NOW_INDEX;
+//
+//            for (int i = PINYIN_START_INDEX; i < 214; ++i) {
+//                uint8_t tmp[4];
+//                uint32_t tmp_code;
+//                EEPROM_ReadBuffer(128 * i + 0x20000, tmp, 4);
+//                tmp_code = tmp[0] | tmp[1] << 8 | tmp[2] << 16 | tmp[3] << 24;
+//                if (judge_belong(PINYIN_CODE, tmp_code)) {
+//                    PINYIN_END_INDEX = i;
+//                } else break;
+//            }
+        }
+    }
+
+}
+#endif
 void MENU_CssScanFound(void) {
     if (gScanCssResultType == CODE_TYPE_DIGITAL || gScanCssResultType == CODE_TYPE_REVERSE_DIGITAL) {
         gMenuCursor = UI_MENU_GetMenuIdx(MENU_R_DCS);
@@ -182,33 +231,37 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax) {
 
         case MENU_ROGER:
             *pMin = 0;
+#ifndef ENABLE_MDC1200
+            *pMax = 1;
+#else
             *pMax = ARRAY_SIZE(gSubMenu_ROGER) - 1;
+#endif
             break;
-#if ENABLE_CHINESE_FULL==4
+#if ENABLE_CHINESE_FULL == 4
 
-        case MENU_PONMSG:
-            *pMin = 0;
-            *pMax = ARRAY_SIZE(gSubMenu_PONMSG) - 1;
-            break;
+            case MENU_PONMSG:
+                *pMin = 0;
+                *pMax = ARRAY_SIZE(gSubMenu_PONMSG) - 1;
+                break;
 #endif
         case MENU_R_DCS:
         case MENU_T_DCS:
             *pMin = 0;
             *pMax = 208;
-            //*pMax = (ARRAY_SIZE(DCS_Options) * 2);
+            //*pMax = (104 * 2);
             break;
 
         case MENU_R_CTCS:
         case MENU_T_CTCS:
             *pMin = 0;
-            *pMax = ARRAY_SIZE(CTCSS_Options);
+            *pMax = 50;
             break;
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-		case MENU_W_N:
-			*pMin = 0;
-			*pMax = ARRAY_SIZE(gSubMenu_W_N) - 1;
-			break;
+            case MENU_W_N:
+                *pMin = 0;
+                *pMax = ARRAY_SIZE(gSubMenu_W_N) - 1;
+                break;
 #endif
 #ifdef ENABLE_ALARM
             case MENU_AL_MOD:
@@ -251,7 +304,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax) {
 #ifdef ENABLE_DTMF_CALLING
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-            	case MENU_D_DCD:
+            case MENU_D_DCD:
 #endif
 #endif
         case MENU_D_LIVE_DEC:
@@ -369,27 +422,27 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax) {
             break;
 
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
-		case MENU_F1SHRT:
-		case MENU_F2SHRT:
-            *pMin = 0;
+            case MENU_F1SHRT:
+            case MENU_F2SHRT:
+                *pMin = 0;
 
 #ifdef ENABLE_SIDEFUNCTIONS_SEND
-            *pMax = gSubMenu_SIDEFUNCTIONS_size-3;
+                *pMax = gSubMenu_SIDEFUNCTIONS_size-3;
 
 #else
-			*pMax =gSubMenu_SIDEFUNCTIONS_size-1;
+                *pMax =gSubMenu_SIDEFUNCTIONS_size-1;
 
 #endif
-             break;
-        case MENU_F1LONG:
-		case MENU_F2LONG:
-		case MENU_MLONG:
-			*pMin = 0;
+                 break;
+            case MENU_F1LONG:
+            case MENU_F2LONG:
+            case MENU_MLONG:
+                *pMin = 0;
 
 
-			*pMax = gSubMenu_SIDEFUNCTIONS_size-1;
+                *pMax = gSubMenu_SIDEFUNCTIONS_size-1;
 
-			break;
+                break;
 #endif
 
         default:
@@ -409,7 +462,7 @@ void MENU_AcceptSetting(void) {
         else if (gSubMenuSelection > Max) gSubMenuSelection = Max;
     }
     char a = gSubMenuSelection;//UART_Send(a,1);
-    UART_Send((uint8_t * ) & a, 1);
+    UART_Send((uint8_t *) &a, 1);
 
     switch (UI_MENU_GetCurrentMenuId()) {
         default:
@@ -488,10 +541,10 @@ void MENU_AcceptSetting(void) {
             return;
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-		case MENU_W_N:
-			gTxVfo->CHANNEL_BANDWIDTH = gSubMenuSelection;
-			gRequestSaveChannel       = 1;
-			return;
+            case MENU_W_N:
+                gTxVfo->CHANNEL_BANDWIDTH = gSubMenuSelection;
+                gRequestSaveChannel       = 1;
+                return;
 #endif
         case MENU_SCR:
             gTxVfo->SCRAMBLING_TYPE = gSubMenuSelection;
@@ -522,17 +575,15 @@ void MENU_AcceptSetting(void) {
             return;
 #ifdef ENABLE_MDC1200
             case MENU_MDC_ID:
-//                for (int i = 3; i >= 0; i--) {
-//                    if (edit[i] != ' ' && edit[i] != '_' && edit[i] != 0x00 && edit[i] != 0xff)
-//                        break;
-//                    edit[i] = ' ';
-//			}
+#ifdef ENABLE_MDC1200_EDIT
         gEeprom.MDC1200_ID=extractHex(edit);
+#endif
+
             return;
 #endif
-        case MENU_MEM_NAME:
+        case MENU_MEM_NAME: //输入法
             // trailing trim
-            for (int i = MAX_EDIT_INDEX-1; i >= 0; i--) {
+            for (int i = MAX_EDIT_INDEX - 1; i >= 0; i--) {
                 if (edit[i] != ' ' && edit[i] != '_' && edit[i] != 0x00 && edit[i] != 0xff)
                     break;
                 edit[i] = ' ';
@@ -690,14 +741,14 @@ void MENU_AcceptSetting(void) {
 //			gSetting_battery_text = gSubMenuSelection;
 //			break;
 #ifdef ENABLE_DTMF_CALLING
-        #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
+#ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-            		case MENU_D_DCD:
-            			gTxVfo->DTMF_DECODING_ENABLE = gSubMenuSelection;
-            			DTMF_clear_RX();
-            			gRequestSaveChannel = 1;
-            			return;
-        #endif
+            case MENU_D_DCD:
+                gTxVfo->DTMF_DECODING_ENABLE = gSubMenuSelection;
+                DTMF_clear_RX();
+                gRequestSaveChannel = 1;
+                return;
+#endif
 #endif
         case MENU_D_LIVE_DEC:
             gSetting_live_DTMF_decoder = gSubMenuSelection;
@@ -721,11 +772,11 @@ void MENU_AcceptSetting(void) {
                 }
                 return;
 #endif
-#if ENABLE_CHINESE_FULL==4
+#if ENABLE_CHINESE_FULL == 4
 
-		case MENU_PONMSG:
-			gEeprom.POWER_ON_DISPLAY_MODE = gSubMenuSelection;
-			break;
+            case MENU_PONMSG:
+                gEeprom.POWER_ON_DISPLAY_MODE = gSubMenuSelection;
+                break;
 #endif
         case MENU_ROGER:
             gEeprom.ROGER = gSubMenuSelection;
@@ -826,21 +877,21 @@ void MENU_AcceptSetting(void) {
             break;
 
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
-        case MENU_F1SHRT:
-        case MENU_F1LONG:
-        case MENU_F2SHRT:
-        case MENU_F2LONG:
-        case MENU_MLONG:
-            {
-                uint8_t * fun[]= {
-                    &gEeprom.KEY_1_SHORT_PRESS_ACTION,
-                    &gEeprom.KEY_1_LONG_PRESS_ACTION,
-                    &gEeprom.KEY_2_SHORT_PRESS_ACTION,
-                    &gEeprom.KEY_2_LONG_PRESS_ACTION,
-                    &gEeprom.KEY_M_LONG_PRESS_ACTION};
-                *fun[UI_MENU_GetCurrentMenuId()-MENU_F1SHRT] = gSubMenu_SIDEFUNCTIONS[gSubMenuSelection].id;
-            }
-            break;
+            case MENU_F1SHRT:
+            case MENU_F1LONG:
+            case MENU_F2SHRT:
+            case MENU_F2LONG:
+            case MENU_MLONG:
+                {
+                    uint8_t * fun[]= {
+                        &gEeprom.KEY_1_SHORT_PRESS_ACTION,
+                        &gEeprom.KEY_1_LONG_PRESS_ACTION,
+                        &gEeprom.KEY_2_SHORT_PRESS_ACTION,
+                        &gEeprom.KEY_2_LONG_PRESS_ACTION,
+                        &gEeprom.KEY_M_LONG_PRESS_ACTION};
+                    *fun[UI_MENU_GetCurrentMenuId()-MENU_F1SHRT] = gSubMenu_SIDEFUNCTIONS[gSubMenuSelection].id;
+                }
+                break;
 #endif
 
     }
@@ -937,9 +988,9 @@ void MENU_ShowCurrentSetting(void) {
             break;
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-		case MENU_W_N:
-			gSubMenuSelection = gTxVfo->CHANNEL_BANDWIDTH;
-			break;
+            case MENU_W_N:
+                gSubMenuSelection = gTxVfo->CHANNEL_BANDWIDTH;
+                break;
 #endif
         case MENU_SCR:
             gSubMenuSelection = gTxVfo->SCRAMBLING_TYPE;
@@ -1094,23 +1145,23 @@ void MENU_ShowCurrentSetting(void) {
 //			gSubMenuSelection = gSetting_battery_text;
 //			return;
 #ifdef ENABLE_DTMF_CALLING
-        #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
+#ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
 
-            		case MENU_D_DCD:
-            			gSubMenuSelection = gTxVfo->DTMF_DECODING_ENABLE;
-            			break;
-        #endif
-                    case MENU_D_LIST:
-                        gSubMenuSelection = gDTMF_chosen_contact + 1;
-                        break;
+            case MENU_D_DCD:
+                gSubMenuSelection = gTxVfo->DTMF_DECODING_ENABLE;
+                break;
+#endif
+            case MENU_D_LIST:
+                gSubMenuSelection = gDTMF_chosen_contact + 1;
+                break;
 #endif
         case MENU_D_LIVE_DEC:
             gSubMenuSelection = gSetting_live_DTMF_decoder;
             break;
-#if ENABLE_CHINESE_FULL==4
-		case MENU_PONMSG:
-			gSubMenuSelection = gEeprom.POWER_ON_DISPLAY_MODE;
-			break;
+#if ENABLE_CHINESE_FULL == 4
+            case MENU_PONMSG:
+                gSubMenuSelection = gEeprom.POWER_ON_DISPLAY_MODE;
+                break;
 #endif
         case MENU_ROGER:
             gSubMenuSelection = gEeprom.ROGER;
@@ -1185,29 +1236,29 @@ void MENU_ShowCurrentSetting(void) {
             break;
 
 #ifdef ENABLE_CUSTOM_SIDEFUNCTIONS
-		case MENU_F1SHRT:
-		case MENU_F1LONG:
-		case MENU_F2SHRT:
-		case MENU_F2LONG:
-		case MENU_MLONG:
-		{
-			uint8_t * fun[]= {
-				&gEeprom.KEY_1_SHORT_PRESS_ACTION,
-				&gEeprom.KEY_1_LONG_PRESS_ACTION,
-				&gEeprom.KEY_2_SHORT_PRESS_ACTION,
-				&gEeprom.KEY_2_LONG_PRESS_ACTION,
-				&gEeprom.KEY_M_LONG_PRESS_ACTION};
-			uint8_t id = *fun[UI_MENU_GetCurrentMenuId()-MENU_F1SHRT];
+            case MENU_F1SHRT:
+            case MENU_F1LONG:
+            case MENU_F2SHRT:
+            case MENU_F2LONG:
+            case MENU_MLONG:
+            {
+                uint8_t * fun[]= {
+                    &gEeprom.KEY_1_SHORT_PRESS_ACTION,
+                    &gEeprom.KEY_1_LONG_PRESS_ACTION,
+                    &gEeprom.KEY_2_SHORT_PRESS_ACTION,
+                    &gEeprom.KEY_2_LONG_PRESS_ACTION,
+                    &gEeprom.KEY_M_LONG_PRESS_ACTION};
+                uint8_t id = *fun[UI_MENU_GetCurrentMenuId()-MENU_F1SHRT];
 
-			for(int i = 0; i <gSubMenu_SIDEFUNCTIONS_size; i++) {
-				if(gSubMenu_SIDEFUNCTIONS[i].id==id) {
-					gSubMenuSelection = i;
-					break;
-				}
+                for(int i = 0; i <gSubMenu_SIDEFUNCTIONS_size; i++) {
+                    if(gSubMenu_SIDEFUNCTIONS[i].id==id) {
+                        gSubMenuSelection = i;
+                        break;
+                    }
 
-			}
-			break;
-		}
+                }
+                break;
+            }
 #endif
 
         default:
@@ -1226,17 +1277,85 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
 
     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
     uint8_t now_menu = UI_MENU_GetCurrentMenuId();
+#ifdef ENABLE_MDC1200_EDIT //输入法数字
     uint8_t end_index = now_menu == MENU_MEM_NAME ? MAX_EDIT_INDEX : 4;
-    if ((now_menu == MENU_MEM_NAME || now_menu == MENU_MDC_ID) &&
+#else
+    uint8_t end_index = MAX_EDIT_INDEX;
+#endif
+    if ((now_menu == MENU_MEM_NAME //输入法
+#ifdef ENABLE_MDC1200
+#ifdef ENABLE_MDC1200_EDIT
+                || now_menu == MENU_MDC_ID
+#endif
+#endif
+        ) &&
         edit_index >= 0) {    // currently editing the channel name
 
         if (edit_index < end_index) {
             if (Key <= KEY_9) {
-                edit[edit_index] = '0' + Key - KEY_0;
+                {
+#ifdef ENABLE_PINYIN
+                    if (INPUT_MODE == 0) {
+//拼音输入
+                        if (Key >= 2 && PINYIN_CODE_INDEX && INPUT_STAGE <= 1) {
+                            uint32_t tmp = PINYIN_CODE;
+                            PINYIN_CODE += Key * PINYIN_CODE_INDEX;
+                            PINYIN_CODE_INDEX /= 10;
+                       PINYIN_SOLVE(tmp);
 
-                if (++edit_index >= end_index) {    // exit edit
-                    gFlagAcceptSetting = false;
-                    gAskForConfirmation = 1;
+//                            if(end_index>100)end_index=0;
+                        } else if (INPUT_STAGE == 2) {
+                            uint8_t SHOW_NUM =
+                                    CHN_NOW_NUM - CHN_NOW_PAGE * 6 > 6 ? 6 : CHN_NOW_NUM - CHN_NOW_PAGE * 6;
+                            if (Key > 0 && Key <= SHOW_NUM) {
+                                if (edit_chn[edit_index + 1] == 1)edit[edit_index + 2] = '_';
+                                EEPROM_ReadBuffer(CHN_NOW_ADD + CHN_NOW_PAGE * 6 * 2 + 2 * (Key - 1),&edit [ edit_index], 2);
+                                edit_index += 2;
+                                PINYIN_NUM_SELECT=0;
+                                PINYIN_CODE = 0;
+                                PINYIN_SEARCH_MODE = 0;
+                                INPUT_STAGE = 0;
+
+                                CHN_NOW_PAGE = 0;
+                                PINYIN_CODE_INDEX = 100000;
+                            }
+                        }
+                    } else if (INPUT_MODE == 1) {
+                        if (INPUT_STAGE == 0) {
+                            if (Key <= KEY_9 && Key >= KEY_2) { //选择字母按键
+                                INPUT_STAGE = 1;
+                                INPUT_SELECT = Key;
+                            }
+                        } else {
+                            if (Key >= 1 && Key <= 2 *num_size[INPUT_SELECT - 2]) {//选择字母
+                                if (edit_chn[edit_index] == 1) edit[edit_index+1] = '_';
+                                if (Key > num_size[INPUT_SELECT - 2])
+                                    edit[edit_index] =
+                                            num_excel[INPUT_SELECT - 2][Key - 1 - num_size[INPUT_SELECT - 2]] -
+                                            32;
+                                else edit[edit_index] = num_excel[INPUT_SELECT - 2][Key - 1];
+                                if (++edit_index >= end_index) {    // exit edit
+                                    gFlagAcceptSetting = false;
+                                    gAskForConfirmation = 1;
+                                }
+                                INPUT_STAGE = 0;
+                            }
+                        }
+                    } else if (INPUT_MODE == 2) {
+                        if (edit_chn[edit_index])edit[edit_index + 1] = '_';
+                        edit[edit_index] = '0' + Key;
+                        if (++edit_index >= end_index) {    // exit edit
+                            gFlagAcceptSetting = false;
+                            gAskForConfirmation = 1;
+                        }
+                    }
+#else
+                    edit[edit_index] = '0' + Key ;
+                    if (++edit_index >= end_index) {    // exit edit
+                        gFlagAcceptSetting = false;
+                        gAskForConfirmation = 1;
+                    }
+#endif
                 }
 
                 gRequestDisplayScreen = DISPLAY_MENU;
@@ -1259,6 +1378,10 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
 
                 if (Value > 0 && Value <= gMenuListCount) {
                     gMenuCursor = Value - 1;
+#ifndef ENABLE_MDC1200
+                    if (gMenuCursor + 1 >= 26)gMenuCursor++;
+
+#endif
                     gFlagRefreshSetting = true;
                     return;
                 }
@@ -1273,6 +1396,10 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
                 Value = gInputBox[0];
                 if (Value > 0 && Value <= gMenuListCount) {
                     gMenuCursor = Value - 1;
+#ifndef ENABLE_MDC1200
+                    if (gMenuCursor + 1 >= 26)gMenuCursor++;
+
+#endif
                     gFlagRefreshSetting = true;
                     return;
                 }
@@ -1369,7 +1496,48 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
 static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld) {
     if (bKeyHeld || !bKeyPressed)
         return;
+    if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gIsInSubMenu == true && edit_index >= 0&&gAskForConfirmation == 0) {
+#ifdef ENABLE_PINYIN
+        if (INPUT_MODE == 0) {
 
+            if (INPUT_STAGE == 1 && PINYIN_CODE > 0) {
+
+                if (PINYIN_CODE_INDEX != 0) {
+                    PINYIN_CODE = PINYIN_CODE / (PINYIN_CODE_INDEX * 100) * (PINYIN_CODE_INDEX * 100);
+                    PINYIN_CODE_INDEX *= 10;
+                } else {
+                    PINYIN_CODE = PINYIN_CODE - PINYIN_CODE % 10;
+                    PINYIN_CODE_INDEX = 1;
+                }
+
+                uint32_t tmp = PINYIN_CODE;
+                PINYIN_SEARCH_MODE=0;
+                PINYIN_SOLVE(tmp);
+
+            } else if (INPUT_STAGE == 2) {
+
+                INPUT_STAGE = 1;
+
+            } else edit_index = -1;
+
+        } else if (INPUT_MODE == 1) {
+            if (INPUT_STAGE == 1)INPUT_STAGE = 0;
+            else  edit_index = -1;
+        } else
+
+
+#endif
+            edit_index = -1;
+        return;
+    }
+#ifdef  ENABLE_PINYIN
+
+//    if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gAskForConfirmation == 0) { //输入法exit
+//
+//
+//    }
+
+#endif
     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 
     if (!gCssBackgroundScan) {
@@ -1417,27 +1585,91 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld) {
 
     gPttWasReleased = true;
 }
+#ifdef ENABLE_PINYIN
+void UPDATE_CHN()
+{
+    uint8_t tmp[5];
 
+    EEPROM_ReadBuffer(
+            PINYIN_NOW_INDEX * 128 + 0X20000 + 16 + PINYIN_NUM_SELECT * 16 + 6, tmp, 5);
+    CHN_NOW_ADD = tmp[1] | tmp[2] << 8 | tmp[3] << 16 | tmp[4] << 24;
+    CHN_NOW_NUM = tmp[0];
+    CHN_NOW_PAGE = 0;
+}
+#endif
 static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
     if (bKeyHeld || !bKeyPressed)
         return;
-
     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
     gRequestDisplayScreen = DISPLAY_MENU;
+#ifdef ENABLE_PINYIN
+    if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME) {
+        if (edit_index == -1) {
+            //输入法参数初始化menu
+            INPUT_MODE = 0;
+            INPUT_SELECT = 0;
+            INPUT_STAGE = 0;
+            INPUT_MODE_LAST = 0;
+            PINYIN_CODE = 0;
+            PINYIN_CODE_INDEX = 100000;
+        }
+        if (gIsInSubMenu) {
+            if (INPUT_MODE == 0) {
+                if (PINYIN_CODE && PINYIN_SEARCH_MODE == 0)return;
+                if (PINYIN_SEARCH_MODE == 1) {
+                    if (INPUT_STAGE == 1) {
+                        INPUT_STAGE++;
 
+                        PINYIN_NUM_SELECT = 0;
+
+                        INPUT_STAGE = 2;
+                        UPDATE_CHN();
+                        return;
+                    } else if (INPUT_STAGE == 2) {
+                        if (PINYIN_NUM_SELECT < PINYIN_SEARCH_NUM - 1)PINYIN_NUM_SELECT++;
+                        else PINYIN_NUM_SELECT = 0;
+                        UPDATE_CHN();
+                        return;
+
+                    }
+                }
+            }else if(INPUT_MODE==3)
+                {
+                INPUT_MODE=INPUT_MODE_LAST;
+                }
+        }
+    }
+
+#endif
     if (!gIsInSubMenu) {
 #ifdef ENABLE_VOICE
         if (UI_MENU_GetCurrentMenuId() != MENU_SCR)
             gAnotherVoiceID = MenuList[gMenuCursor].voice_id;
 #endif
-
-
         if (UI_MENU_GetCurrentMenuId() == MENU_DEL_CH || UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME)
-            if (!RADIO_CheckValidChannel(gSubMenuSelection, false, 0))
-                return;  // invalid channel
+//            if (!RADIO_CheckValidChannel(gSubMenuSelection, false, 0))
+//                return;  // invalid channel
+        {
+            uint8_t before=gSubMenuSelection;
+            while(!RADIO_CheckValidChannel(gSubMenuSelection, false, 0))
+            {
+                gSubMenuSelection++;
+                if (gSubMenuSelection==before)
+                    return;  // invalid channel
+                    else if(gSubMenuSelection==MR_CHANNEL_LAST)gSubMenuSelection=0;
+            }
+        }
 
-        if (UI_MENU_GetCurrentMenuId() == MENU_ANI_ID || UI_MENU_GetCurrentMenuId() == MENU_UPCODE|| UI_MENU_GetCurrentMenuId() == MENU_DWCODE)
-                return;  // invalid
+        if (UI_MENU_GetCurrentMenuId() == MENU_UPCODE
+            || UI_MENU_GetCurrentMenuId() == MENU_DWCODE
+            #ifdef ENABLE_DTMF_CALLING
+            || UI_MENU_GetCurrentMenuId() == MENU_ANI_ID
+            #endif
+            #ifndef ENABLE_MDC1200_EDIT
+            || UI_MENU_GetCurrentMenuId() == MENU_MDC_ID
+#endif
+                )
+            return;  // invalid
         gAskForConfirmation = 0;
         gIsInSubMenu = true;
 
@@ -1445,24 +1677,22 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
         {
             gInputBoxIndex = 0;
             edit_index = -1;
+
         }
 #ifdef ENABLE_MDC1200
+#ifdef ENABLE_MDC1200_EDIT
         if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID)
     {
-
                 edit_index = 0;
-
             memmove(edit_original, edit, sizeof(edit_original));
-
-
-
     }
-
-
-
+#endif
 #endif
         return;
     }
+#ifdef ENABLE_MDC1200
+#ifdef ENABLE_MDC1200_EDIT
+
     if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID && edit_index < 4) {    // editing the channel name characters
 
         if (++edit_index < 4)
@@ -1479,7 +1709,10 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
         }
 
     }
-    if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME) {
+#endif
+
+#endif
+    if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME) { //输入法MENU
         if (edit_index < 0) {    // enter channel name edit mode
             if (!RADIO_CheckValidChannel(gSubMenuSelection, false, 0))
                 return;
@@ -1487,30 +1720,35 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
             SETTINGS_FetchChannelName(edit, gSubMenuSelection);
             // pad the channel name out with '_'
             edit_index = strlen(edit);
-#if ENABLE_CHINESE_FULL != 4
             while (edit_index < MAX_EDIT_INDEX)edit[edit_index++] = '_';
             edit[edit_index] = 0;
             edit_index = 0;  // 'edit_index' is going to be used as the cursor position
 
-#else
-            if(!CHINESE_JUDGE(edit,edit_index))
-            {
-                while (edit_index < MAX_EDIT_INDEX)edit[edit_index++] = '_';
-                edit[edit_index] = 0;
-                edit_index = 0;  // 'edit_index' is going to be used as the cursor position
-
-            }
-
-#endif
-
-            // make a copy so we can test for change when exiting the menu item
             memcpy(edit_original, edit, sizeof(edit_original));
             return;
         } else if (edit_index >= 0 && edit_index < MAX_EDIT_INDEX) {    // editing the channel name characters
 
-            if (++edit_index < MAX_EDIT_INDEX)
-                return;    // next char
+#ifdef ENABLE_PINYIN
+            if (edit_chn[edit_index] == 1)
+                    edit_index++;
+#endif
+            edit_index++;
+#ifdef ENABLE_PINYIN
+            if (INPUT_MODE == 3)INPUT_MODE = INPUT_MODE_LAST;
+#endif
+            if (edit_index < MAX_EDIT_INDEX) {
+#ifdef ENABLE_PINYIN
 
+
+
+                if (INPUT_MODE == 0 && edit_index + 1 >= MAX_EDIT_INDEX)
+                    INPUT_MODE = 1;
+#endif
+
+                return;
+
+
+            }
             // exit
             if (memcmp(edit_original, edit, sizeof(edit_original)) == 0) {    // no change - drop it
                 gFlagAcceptSetting = false;
@@ -1522,15 +1760,26 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
             }
         }
     }
+#ifdef ENABLE_PINYIN //退出输入模式
 
+//    PINYIN_MODE=0;
+#endif
     // exiting the sub menu
 
     if (gIsInSubMenu) {
         if (UI_MENU_GetCurrentMenuId() == MENU_RESET ||
             UI_MENU_GetCurrentMenuId() == MENU_MEM_CH ||
             UI_MENU_GetCurrentMenuId() == MENU_DEL_CH ||
-            UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME ||
-            UI_MENU_GetCurrentMenuId() == MENU_MDC_ID) {
+            UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME
+#ifdef ENABLE_MDC1200
+#ifdef ENABLE_MDC1200_EDIT
+
+            ||
+UI_MENU_GetCurrentMenuId() == MENU_MDC_ID
+#endif
+#endif
+
+                ) {
             switch (gAskForConfirmation) {
                 case 0:
                     gAskForConfirmation = 1;
@@ -1565,7 +1814,6 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld) {
             gIsInSubMenu = false;
         }
     }
-
     SCANNER_Stop();
 
 #ifdef ENABLE_VOICE
@@ -1583,16 +1831,28 @@ static void MENU_Key_STAR(const bool bKeyPressed, const bool bKeyHeld) {
         return;
 
     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-
+//输入法星模式切换
     if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && edit_index >= 0) {    // currently editing the channel name
 
         if (edit_index < MAX_EDIT_INDEX) {
+#ifndef ENABLE_PINYIN
             edit[edit_index] = '-';
-
             if (++edit_index >= MAX_EDIT_INDEX) {    // exit edit
                 gFlagAcceptSetting = false;
                 gAskForConfirmation = 1;
             }
+
+#else //输入法星模式切换
+            INPUT_MODE++;
+            if (INPUT_MODE >= 3)INPUT_MODE = 0;
+            if (INPUT_MODE == 0 && edit_index + 1 >= MAX_EDIT_INDEX)
+                INPUT_MODE = 1;
+            if (INPUT_MODE == 0) {
+                PINYIN_CODE = 0;
+                PINYIN_CODE_INDEX = 100000;
+            }
+            INPUT_STAGE = 0;
+#endif
 
             gRequestDisplayScreen = DISPLAY_MENU;
         }
@@ -1627,9 +1887,53 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction) 
     uint8_t VFO;
     uint8_t Channel;
     bool bCheckScanList;
-    if (gIsInSubMenu && edit_index >= 0) {
+    if (gIsInSubMenu && edit_index >= 0) { //输入法UP DOWN
         if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME) {    // change the character
+
             if (bKeyPressed && edit_index < MAX_EDIT_INDEX) {
+#ifdef  ENABLE_PINYIN//拼音上下
+
+                if (INPUT_MODE == 0) {
+                    if (INPUT_STAGE == 2) {
+                        if (PINYIN_SEARCH_MODE == 1)//准确的组合
+                        {
+                            if (Direction == 1) {
+                                if (CHN_NOW_PAGE) CHN_NOW_PAGE--;
+                            } else if (Direction == -1) {
+                                if ((CHN_NOW_PAGE + 1) * 6 < CHN_NOW_NUM)CHN_NOW_PAGE++;
+
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                if (((INPUT_MODE == 0 || INPUT_MODE == 1) && INPUT_STAGE == 0) || INPUT_MODE == 2 || INPUT_MODE == 3) {
+                    INPUT_MODE_LAST = INPUT_MODE;
+                    INPUT_MODE = 3;
+
+                    if (edit_chn[edit_index]) {
+                        edit[edit_index + 1] = '_';
+                        edit[edit_index] = '_';
+
+                    }
+                    char c = edit[edit_index] + Direction;
+                    while (c >= 32 && c <= 126) {
+                        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z' )||
+                           ( c >= '0' && c <= '9')) {    // choose next character
+                            c += Direction;
+                        } else break;
+                    }
+                    edit[edit_index] = ((uint8_t) c < 32) ? 126 : ((uint8_t) c > 126) ? 32 : c;
+                }
+
+
+#else
+                if (isChineseChar(edit[edit_index], edit_index, MAX_EDIT_INDEX)) {
+                    edit[edit_index + 1] = '_';
+                    edit[edit_index] = '_';
+
+                }
                 const char unwanted[] = "$%&!\"':;?^`|{}";
                 char c = edit[edit_index] + Direction;
                 unsigned int i = 0;
@@ -1639,12 +1943,15 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction) 
                         i = 0;
                     }
                 }
-                edit[edit_index] = (c < 32) ? 126 : (c > 126) ? 32 : c;
-
+                edit[edit_index] = ((uint8_t) c < 32) ? 126 : ((uint8_t) c > 126) ? 32 : c;
+#endif
                 gRequestDisplayScreen = DISPLAY_MENU;
             }
             return;
-        } else if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID) {
+        }
+#ifdef ENABLE_MDC1200
+#ifdef ENABLE_MDC1200_EDIT
+        else if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID) {
             if (bKeyPressed && edit_index < 4) {
                 char c = edit[edit_index] + Direction;
                 if (c < '0')c = 'F';
@@ -1655,10 +1962,14 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction) 
                 }
 
                 edit[edit_index] = c;
+
                 gRequestDisplayScreen = DISPLAY_MENU;
             }
             return;
         }
+#endif
+#endif
+
     }
     if (!bKeyHeld) {
         if (!bKeyPressed)
@@ -1675,8 +1986,14 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction) 
     }
 
     if (!gIsInSubMenu) {
-        gMenuCursor = NUMBER_AddWithWraparound(gMenuCursor, -Direction, 0, gMenuListCount - 1);
-
+#ifndef ENABLE_MDC1200
+        uint8_t last_num = gMenuCursor;
+#endif
+        gMenuCursor = NUMBER_AddWithWraparound(gMenuCursor, key_dir * Direction, 0, gMenuListCount - 1);
+#ifndef ENABLE_MDC1200
+        if (last_num + 1 < 26 && gMenuCursor + 1 == 26)gMenuCursor++;
+        else if (last_num + 1 == 27 && gMenuCursor + 1 == 26)gMenuCursor--;
+#endif
         gFlagRefreshSetting = true;
 
         gRequestDisplayScreen = DISPLAY_MENU;
@@ -1763,16 +2080,41 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) {
             MENU_Key_STAR(bKeyPressed, bKeyHeld);
             break;
         case KEY_F:
-            if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME &&
+            if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && //输入法
                 edit_index >= 0) {    // currently editing the channel name
                 if (!bKeyHeld && bKeyPressed) {
                     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-                    if (edit_index < MAX_EDIT_INDEX) {
+#ifdef ENABLE_PINYIN
+
+                    bool flag_space = true;
+                    if ((INPUT_MODE == 0 && INPUT_STAGE > 0 )|| (INPUT_MODE == 1 && INPUT_STAGE > 0))flag_space = false;
+#endif
+
+
+                    if (edit_index < MAX_EDIT_INDEX
+                        #ifdef ENABLE_PINYIN
+                        && flag_space
+#endif
+
+
+                            ) {
+
+#ifdef ENABLE_PINYIN
+                        if (edit_chn[edit_index]) {
+                            edit[edit_index + 1] = '_';
+
+                        }
+#endif
+
                         edit[edit_index] = ' ';
+
+
                         if (++edit_index >= MAX_EDIT_INDEX) {    // exit edit
                             gFlagAcceptSetting = false;
                             gAskForConfirmation = 1;
                         }
+
+
                         gRequestDisplayScreen = DISPLAY_MENU;
                     }
                 }
@@ -1802,4 +2144,5 @@ UI_MENU_GetCurrentMenuId() == MENU_BATCAL
             gMenuCountdown = menu_timeout_500ms;
         }
     }
+
 }

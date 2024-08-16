@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include "font.h"
+
 #if !defined(ENABLE_OVERLAY)
 
 #include "ARMCM0.h"
@@ -23,6 +24,9 @@
 #endif
 #ifdef ENABLE_FMRADIO
 #include "app/fm.h"
+#endif
+#ifdef ENABLE_DOPPLER
+#include "bsp/dp32g030/rtc.h"
 #endif
 
 #include "app/uart.h"
@@ -54,11 +58,11 @@ typedef struct {
 } Header_t;
 #ifdef ENABLE_DOCK
 typedef struct {
-		Header_t Header;
-		uint8_t Key;
-		uint8_t Padding;
-		uint32_t Timestamp;
-	} CMD_0801_t; // simulate key press
+        Header_t Header;
+        uint8_t Key;
+        uint8_t Padding;
+        uint32_t Timestamp;
+    } CMD_0801_t; // simulate key press
 #endif
 typedef struct {
     uint8_t Padding[2];
@@ -87,6 +91,7 @@ typedef struct {
     uint8_t Size;
     uint8_t Padding;
     uint32_t Timestamp;
+    uint8_t ADD[2];
 } CMD_051B_t;
 typedef struct {
     Header_t Header;
@@ -219,6 +224,7 @@ static void SendVersion(void) {
     SendReply(&Reply, sizeof(Reply));
 }
 
+#ifdef ENABLE_BLOCK
 static bool IsBadChallenge(const uint32_t *pKey, const uint32_t *pIn, const uint32_t *pResponse) {
     unsigned int i;
     uint32_t IV[4];
@@ -236,6 +242,7 @@ static bool IsBadChallenge(const uint32_t *pKey, const uint32_t *pIn, const uint
 
     return false;
 }
+#endif
 
 static void CMD_0514(const uint8_t *pBuffer) {
     const CMD_0514_t *pCmd = (const CMD_0514_t *) pBuffer;
@@ -270,7 +277,7 @@ static void CMD_051B(const uint8_t *pBuffer) {
     gFmRadioCountdown_500ms = fm_radio_countdown_500ms;
 #endif
 
-    memset(&Reply, 0, sizeof(Reply));
+//    memset(&Reply, 0, sizeof(Reply));
     Reply.Header.ID = 0x051C;
     Reply.Header.Size = pCmd->Size + 4;
     Reply.Data.Offset = pCmd->Offset;
@@ -282,17 +289,17 @@ static void CMD_051B(const uint8_t *pBuffer) {
 
     if (!bLocked)
 #endif
+    if (pCmd->Header.ID == 0x051B)
         EEPROM_ReadBuffer(pCmd->Offset, Reply.Data.Data, pCmd->Size);
-
+    else
+        EEPROM_ReadBuffer(((pCmd->Offset) << 16) + ((pCmd->ADD[1]) << 8) + (pCmd->ADD[0]), Reply.Data.Data, pCmd->Size);
     SendReply(&Reply, pCmd->Size + 8);
 }
 
 static void CMD_051D(const uint8_t *pBuffer) {
     const CMD_051D_t *pCmd = (const CMD_051D_t *) pBuffer;
     REPLY_051D_t Reply;
-    bool bReloadEeprom;
 #ifdef ENABLE_BLOCK
-
     bool bIsLocked;
 #endif
     if (pCmd->Timestamp != Timestamp)
@@ -300,7 +307,6 @@ static void CMD_051D(const uint8_t *pBuffer) {
 
     gSerialConfigCountDown_500ms = 12; // 6 sec
 
-    bReloadEeprom = false;
 
 #ifdef ENABLE_FMRADIO
     gFmRadioCountdown_500ms = fm_radio_countdown_500ms;
@@ -318,27 +324,26 @@ static void CMD_051D(const uint8_t *pBuffer) {
     if (!bIsLocked) {
 #endif
 
-    unsigned int i;
-        for (i = 0; i < (pCmd->Size / 8); i++) {
-            const uint16_t Offset = pCmd->Offset + (i * 8U);
+
+    for (unsigned int i = 0; i < (pCmd->Size / 8); i++) {
+        const uint16_t Offset = pCmd->Offset + (i * 8U);
 #ifdef ENABLE_BLOCK
 
-            if (Offset >= 0x0F30 && Offset < 0x0F40)
-                if (!gIsLocked)
+        if (Offset >= 0x0F30 && Offset < 0x0F40)
+            if (!gIsLocked)
 #endif
 
-            bReloadEeprom = true;
 #ifdef ENABLE_BLOCK
 
-            if ((Offset < 0x0E98 || Offset >= 0x0EA0) || !bIsInLockScreen || pCmd->bAllowPassword)
+        if ((Offset < 0x0E98 || Offset >= 0x0EA0) || !bIsInLockScreen || pCmd->bAllowPassword)
 #endif
 
-            EEPROM_WriteBuffer(Offset, &pCmd->Data[i * 8U],8);
+        EEPROM_WriteBuffer(Offset, &pCmd->Data[i * 8U], 8);
 
-        }
+    }
 
-        if (bReloadEeprom)
-            SETTINGS_InitEEPROM();
+
+    SETTINGS_InitEEPROM();
 #ifdef ENABLE_BLOCK
 
     }
@@ -370,6 +375,7 @@ static void CMD_0529(void) {
 
     SendReply(&Reply, sizeof(Reply));
 }
+
 #ifdef ENABLE_BLOCK
 static void CMD_052D(const uint8_t *pBuffer) {
     const CMD_052D_t *pCmd = (const CMD_052D_t *) pBuffer;
@@ -407,6 +413,7 @@ static void CMD_052D(const uint8_t *pBuffer) {
     SendReply(&Reply, sizeof(Reply));
 }
 #endif
+
 // session init, sends back version info and state
 // timestamp is a session id really
 // this command also disables dual watch, crossband,
@@ -433,7 +440,7 @@ static void CMD_052F(const uint8_t *pBuffer) {
 #endif
 
     if (gCurrentFunction == FUNCTION_POWER_SAVE)
-        FUNCTION_Select(FUNCTION_FOREGROUND);
+        FUNCTION_Select(FUNCTION_FOREGROUND); //OK
 
     gSerialConfigCountDown_500ms = 12; // 6 sec
 
@@ -448,40 +455,41 @@ static void CMD_052F(const uint8_t *pBuffer) {
 #ifdef ENABLE_UART_RW_BK_REGS
 static void CMD_0601_ReadBK4819Reg(const uint8_t *pBuffer)
 {
-	typedef struct  __attribute__((__packed__)) {
-		Header_t header;
-		uint8_t reg;
-	} CMD_0601_t;
+    typedef struct  __attribute__((__packed__)) {
+        Header_t header;
+        uint8_t reg;
+    } CMD_0601_t;
 
-	CMD_0601_t *cmd = (CMD_0601_t*) pBuffer;
+    CMD_0601_t *cmd = (CMD_0601_t*) pBuffer;
 
-	struct  __attribute__((__packed__)) {
-		Header_t header;
-	struct __attribute__((__packed__)) {
-			uint8_t reg;
-			uint16_t value;
-		} data;
-	} reply;
+    struct  __attribute__((__packed__)) {
+        Header_t header;
+    struct __attribute__((__packed__)) {
+            uint8_t reg;
+            uint16_t value;
+        } data;
+    } reply;
 
-	reply.header.ID = 0x0601;
-	reply.header.Size = sizeof(reply.data);
-	reply.data.reg = cmd->reg;
-	reply.data.value = BK4819_ReadRegister(cmd->reg);
-	SendReply(&reply, sizeof(reply));
+    reply.header.ID = 0x0601;
+    reply.header.Size = sizeof(reply.data);
+    reply.data.reg = cmd->reg;
+    reply.data.value = BK4819_ReadRegister(cmd->reg);
+    SendReply(&reply, sizeof(reply));
 }
 
 static void CMD_0602_WriteBK4819Reg(const uint8_t *pBuffer)
 {
-	typedef struct  __attribute__((__packed__)) {
-		Header_t header;
-		uint8_t reg;
-		uint16_t value;
-	} CMD_0602_t;
+    typedef struct  __attribute__((__packed__)) {
+        Header_t header;
+        uint8_t reg;
+        uint16_t value;
+    } CMD_0602_t;
 
-	CMD_0602_t *cmd = (CMD_0602_t*) pBuffer;
-	BK4819_WriteRegister(cmd->reg, cmd->value);
+    CMD_0602_t *cmd = (CMD_0602_t*) pBuffer;
+    BK4819_WriteRegister(cmd->reg, cmd->value);
 }
 #endif
+
 bool UART_IsCommandAvailable(void) {
     uint16_t Index;
     uint16_t TailIndex;
@@ -573,84 +581,69 @@ bool UART_IsCommandAvailable(void) {
     return judge;
 }
 
-#if ENABLE_CHINESE_FULL==4
-
-static void CMD_052B(const uint8_t *pBuffer)//read
-{
-    const CMD_052B_t *pCmd = (const CMD_052B_t *) pBuffer;
-    REPLY_051B_t Reply;
-
-
-    if (pCmd->Timestamp != Timestamp)
-        return;
-
-    gSerialConfigCountDown_500ms = 12; // 6 sec
-
-#ifdef ENABLE_FMRADIO
-    gFmRadioCountdown_500ms = fm_radio_countdown_500ms;
-#endif
-
-    memset(&Reply, 0, sizeof(Reply));
-    Reply.Header.ID = 0x051C;
-    Reply.Header.Size = pCmd->Size + 4;
-    Reply.Data.Offset = pCmd->Offset;
-
-    Reply.Data.Size = pCmd->Size;
-
-
-        EEPROM_ReadBuffer(((pCmd->Offset) << 16) + ((pCmd->ADD[1]) << 8) + (pCmd->ADD[0]), Reply.Data.Data, pCmd->Size);
-
-    SendReply(&Reply, pCmd->Size + 8);
-}
+#if ENABLE_CHINESE_FULL == 4
+//
+//static void CMD_052B(const uint8_t *pBuffer)//read
+//{
+//    const CMD_052B_t *pCmd = (const CMD_052B_t *) pBuffer;
+//    REPLY_051B_t Reply;
+//
+//
+//    if (pCmd->Timestamp != Timestamp)
+//        return;
+//
+//    gSerialConfigCountDown_500ms = 12; // 6 sec
+//
+//#ifdef ENABLE_FMRADIO
+//    gFmRadioCountdown_500ms = fm_radio_countdown_500ms;
+//#endif
+//
+////    memset(&Reply, 0, sizeof(Reply));
+//    Reply.Header.ID = 0x051C;
+//    Reply.Header.Size = pCmd->Size + 4;
+//    Reply.Data.Offset = pCmd->Offset;
+//
+//    Reply.Data.Size = pCmd->Size;
+//
+//
+//        EEPROM_ReadBuffer(((pCmd->Offset) << 16) + ((pCmd->ADD[1]) << 8) + (pCmd->ADD[0]), Reply.Data.Data, pCmd->Size);
+//
+//    SendReply(&Reply, pCmd->Size + 8);
+//}
 
 static void CMD_0538(const uint8_t *pBuffer)//write
 {
     const CMD_051D_t *pCmd = (const CMD_051D_t *) pBuffer;
     REPLY_051D_t Reply;
-    bool bReloadEeprom;
-    bool bIsLocked;
-
     if (pCmd->Timestamp != Timestamp)
         return;
-
     gSerialConfigCountDown_500ms = 12; // 6 sec
-
-    bReloadEeprom = false;
-
 #ifdef ENABLE_FMRADIO
     gFmRadioCountdown_500ms = fm_radio_countdown_500ms;
 #endif
-
     Reply.Header.ID = 0x051E;
     Reply.Header.Size = sizeof(Reply.Data);
     Reply.Data.Offset = pCmd->Offset;
-
-    bIsLocked = bHasCustomAesKey ? gIsLocked : bHasCustomAesKey;
     int add=((pCmd->Size) - 2)%8;
-    if (!bIsLocked) {
+
+
+
         for ( int i = 0; i < ((pCmd->Size) - 2) / 8+(add==0?0:1); i++) {
             const uint32_t Offset = ((pCmd->Offset) << 16) + ((pCmd->Data[1]) << 8) + (pCmd->Data[0]) + (i * 8U);
-
-            if (Offset >= 0x0F30 && Offset < 0x0F40)
-                if (!gIsLocked)
-                    bReloadEeprom = true;
-
-            if ((Offset > 0xffff || Offset < 0x0E98 || (Offset <= 0xffff && Offset >= 0x0EA0)) || !bIsInLockScreen ||
-                pCmd->bAllowPassword) {
+//#ifdef ENABLE_DOPPLER
+//            if(Offset>=0x90000)
+//                {
+//                memcpy(time,pCmd->Data[i * 8U + 2],6);
+//                RTC_Set(time);
+//                continue;
+//                }
+//#endif
                 if(add&&i==((pCmd->Size) - 2) / 8+(add==0?0:1)-1)
                     EEPROM_WriteBuffer(Offset, &pCmd->Data[i * 8U + 2], add);
                 else
-                EEPROM_WriteBuffer(Offset, &pCmd->Data[i * 8U + 2], 8);
-//                uint8_t back[8];
-//                EEPROM_ReadBuffer(Offset, back, 8);
-//                UART_Send(back, 8);
-            }
+                    EEPROM_WriteBuffer(Offset, &pCmd->Data[i * 8U + 2], 8);
         }
-
-
-        if (bReloadEeprom)
             SETTINGS_InitEEPROM();
-    }
 
     SendReply(&Reply, sizeof(Reply));
 }
@@ -658,23 +651,24 @@ static void CMD_0538(const uint8_t *pBuffer)//write
 
 #ifdef ENABLE_DOCK
 static void CMD_0801(const uint8_t *pBuffer)
-	{
-		const CMD_0801_t *pCmd = (const CMD_0801_t *)pBuffer;
-		const uint8_t key = pCmd->Key & 0x1f;
-		const bool click = pCmd->Key & 32;
-		if(key != KEY_INVALID)
-		{
-			gSimulateKey = key;
-			gDebounceDefeat = 0;
-		}
-		gSimulateHold = click ? KEY_INVALID : key;
-	}
+    {
+        const CMD_0801_t *pCmd = (const CMD_0801_t *)pBuffer;
+        const uint8_t key = pCmd->Key & 0x1f;
+        const bool click = pCmd->Key & 32;
+        if(key != KEY_INVALID)
+        {
+            gSimulateKey = key;
+            gDebounceDefeat = 0;
+        }
+        gSimulateHold = click ? KEY_INVALID : key;
+    }
 #endif
+
 void UART_HandleCommand(void) {
     switch (UART_Command.Header.ID) {
-#if ENABLE_CHINESE_FULL==4
+#if ENABLE_CHINESE_FULL == 4
         case 0x052B://read
-            CMD_052B(UART_Command.Buffer);
+            CMD_051B(UART_Command.Buffer);
             break;
         case 0x0538://write
             CMD_0538(UART_Command.Buffer);
@@ -699,7 +693,6 @@ void UART_HandleCommand(void) {
             break;
 
 
-
         case 0x0527:
             CMD_0527();
             break;
@@ -709,9 +702,9 @@ void UART_HandleCommand(void) {
             break;
 #ifdef ENABLE_BLOCK
 
-        case 0x052D:
-            CMD_052D(UART_Command.Buffer);
-            break;
+            case 0x052D:
+                CMD_052D(UART_Command.Buffer);
+                break;
 #endif
         case 0x052F:
             CMD_052F(UART_Command.Buffer);
@@ -726,12 +719,12 @@ void UART_HandleCommand(void) {
             break;
 #ifdef ENABLE_UART_RW_BK_REGS
             case 0x0601:
-			CMD_0601_ReadBK4819Reg(UART_Command.Buffer);
-			break;
+            CMD_0601_ReadBK4819Reg(UART_Command.Buffer);
+            break;
 
-		case 0x0602:
-			CMD_0602_WriteBK4819Reg(UART_Command.Buffer);
-			break;
+        case 0x0602:
+            CMD_0602_WriteBK4819Reg(UART_Command.Buffer);
+            break;
 #endif
     }
 }

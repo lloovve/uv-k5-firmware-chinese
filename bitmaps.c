@@ -18,7 +18,7 @@ const uint8_t BITMAP_POWERSAVE[8] =
 
         };
 
-const uint8_t BITMAP_TX[8] =
+const uint8_t BITMAP_TX[6] =
         {	// "TX"
                 0b00000000,
                 0b00000001,
@@ -26,20 +26,20 @@ const uint8_t BITMAP_TX[8] =
                 0b01111111,
                 0b00000001,
                 0b00000001,
-                0b00000000,
-                0b00000000
+//                0b00000000,
+//                0b00000000
         };
 
-const uint8_t BITMAP_RX[8] =
+const uint8_t BITMAP_RX[5] =
         {	// "RX"
                 0b00000000,
                 0b01111111,
                 0b00001001,
                 0b00011001,
                 0b01100110,
-                0b00000000,
-                0b00000000,
-                0b00000000
+//                0b00000000,
+//                0b00000000,
+//                0b00000000
         };
 
 const uint8_t BITMAP_FM[10] =
@@ -204,9 +204,9 @@ const uint8_t BITMAP_TDR1[16] =
                 0b01000110
         };
 
-const uint8_t BITMAP_TDR2[10] =
+const uint8_t BITMAP_TDR2[9] =
         {	// "><" .. DW on hold
-                0b00000000,
+//                0b00000000,
                 0b00100010,
                 0b00110110,
                 0b00011100,
@@ -259,9 +259,9 @@ const uint8_t BITMAP_Antenna[5] =
                 0b00000011
         };
 
-const uint8_t BITMAP_VFO_Default[8] =
+const uint8_t BITMAP_VFO_Default[7] =
         {
-                0b00000000,
+//                0b00000000,
                 0b01111111,
                 0b01111111,
                 0b00111110,
@@ -271,9 +271,9 @@ const uint8_t BITMAP_VFO_Default[8] =
                 0b00001000
         };
 
-const uint8_t BITMAP_VFO_NotDefault[8] =
+const uint8_t BITMAP_VFO_NotDefault[7] =
         {
-                0b00000000,
+//                0b00000000,
                 0b01000001,
                 0b01000001,
                 0b00100010,
@@ -283,19 +283,19 @@ const uint8_t BITMAP_VFO_NotDefault[8] =
                 0b00001000
         };
 
-const uint8_t BITMAP_ScanList1[6] =
+const uint8_t BITMAP_ScanList1[3] =
         {	// 'I' symbol
-                0b00000000,
-                0b00000000,
+//                0b00000000,
+//                0b00000000,
                 0b01000010,
                 0b01111110,
                 0b01000010,
-                0b00000000
+//                0b00000000
         };
 
-const uint8_t BITMAP_ScanList2[6] =
+const uint8_t BITMAP_ScanList2[5] =
         {	// 'II' symbol
-                0b00000000,
+//                0b00000000,
                 0b01000010,
                 0b01111110,
                 0b01000010,
@@ -303,9 +303,9 @@ const uint8_t BITMAP_ScanList2[6] =
                 0b01000010
         };
 
-const uint8_t BITMAP_compand[6] =
+const uint8_t BITMAP_compand[5] =
         {
-                0b00000000,
+//                0b00000000,
                 0b00111100,
                 0b01000010,
                 0b01000010,
@@ -322,3 +322,76 @@ const uint8_t BITMAP_SEND[13] =
         {
                 0x03, 0x03, 0x7F, 0x7F, 0x03, 0x03,0X00, 0x63, 0x77, 0x1C, 0x1C, 0x77, 0x63
         };
+
+
+#ifdef ENABLE_MESSENGER
+const uint8_t BITMAP_NEWMSG[7] =
+{	// message icon
+//	0b00000000,
+	0b01111110,
+	0b01000110,
+	0b01001010,
+	0b01010010,
+	0b01001010,
+	0b01000110,
+	0b01111110,
+};
+const uint8_t BITMAP_t[6] =
+        {	// "t"
+                0b00000000,
+                0b00000100,
+                0b00000100,
+                0b00111111,
+                0b01000100,
+                0b00100100,
+
+        };
+
+const uint8_t BITMAP_1[6] =
+        {	// "1"
+                0b00000000,
+                0b00000000,
+                0b01000010,
+                0b01111111,
+                0b01000000,
+                0b00000000,
+
+        };
+#endif
+#include "ui/helper.h"
+#ifdef ENABLE_PINYIN
+const uint8_t BITMAP_ARRAY_DOWN[5] =
+        {
+                0b00000011,
+                0b00001111,
+                0b00011111,
+                0b00001111,
+                0b00000011
+        };
+const uint8_t BITMAP_ARRAY_UP[5] =
+        {
+                0b01100000,
+                0b01111000,
+                0b01111110,
+                0b01111000,
+                0b01100000
+        };
+ const uint8_t BITMAP_CN[7] ={
+                0b00111100,
+                0b00100100,
+                0b00100100,
+                0b11111111,
+                0b00100100,
+                0b00100100,
+                0b00111100,
+
+};
+ const uint8_t BITMAP_POINT[2] ={
+                0b0000011,
+                0b00110000,
+
+
+};
+
+
+#endif

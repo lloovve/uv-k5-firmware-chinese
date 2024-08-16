@@ -6,75 +6,13 @@
 #include "misc.h"
 #include <string.h>
 #include "driver/eeprom.h"
-uint16_t MDC_ID = 0X542B;
+
 
 const uint8_t mdc1200_pre_amble[] = {0x00, 0x00, 0x00};
 const uint8_t mdc1200_sync[5] = {0x07, 0x09, 0x2a, 0x44, 0x6f};
 
-uint8_t mdc1200_sync_suc_xor[sizeof(mdc1200_sync)];
+const uint8_t mdc1200_sync_suc_xor[5] = {0xfb, 0x72, 0x40, 0x99, 0xa7};
 
-
-#if 1
-
-uint16_t compute_crc(const void *data, const unsigned int data_len) {    // let the CPU's hardware do some work :)
-    uint16_t crc;
-    CRC_InitReverse();
-    crc = CRC_Calculate(data, data_len);
-    CRC_Init();
-    return crc;
-}
-
-#elif 1
-uint16_t compute_crc( void *data, const unsigned int data_len) {    // let the CPU's hardware do some work :)
-
-    return CRC_Calculate(data, data_len);
-}
-//uint16_t compute_crc( void *data, const unsigned int data_len)
-//	{	// using the reverse computation and polynominal avoids having to reverse the bit order during and after
-//		unsigned int   i;
-//		 uint8_t *data8 = ( uint8_t *)data;
-//		uint16_t       crc = 0;
-//		for (i = 0; i < data_len; i++)
-//		{
-//			unsigned int k;
-//			crc ^= data8[i];
-//			for (k = 8; k > 0; k--)
-//				crc = (crc & 1u) ? (crc >> 1) ^ 0x8408 : crc >> 1;
-//		}
-//		return crc ^ 0xffff;
-//	}
-
-#else
-
-    uint16_t compute_crc(const void *data, const unsigned int data_len)
-    {
-        unsigned int   i;
-        const uint8_t *data8 = (const uint8_t *)data;
-        uint16_t       crc = 0;
-
-        for (i = 0; i < data_len; i++)
-        {
-            uint8_t mask;
-
-            // bit reverse each data byte
-            const uint8_t bits = bit_reverse_8(*data8++);
-
-            for (mask = 0x0080; mask != 0; mask >>= 1)
-            {
-                uint16_t msb = crc & 0x8000;
-                if (bits & mask)
-                    msb ^= 0x8000;
-                crc <<= 1;
-                if (msb)
-                    crc ^= 0x1021;
-            }
-        }
-
-        // bit reverse and invert the final CRC
-        return bit_reverse_16(crc) ^ 0xffff;
-    }
-
-#endif
 
 void error_correction(void *data) {    // can correct up to 3 or 4 corrupted bits (I think)
 
@@ -430,90 +368,18 @@ bool MDC1200_process_rx_data(
     return false;
 }
 
-uint8_t mdc1200_rx_buffer[sizeof(mdc1200_sync_suc_xor) + (MDC1200_FEC_K * 2)];
+uint8_t mdc1200_rx_buffer[5 + (MDC1200_FEC_K * 2)];
 unsigned int mdc1200_rx_buffer_index = 0;
 
 uint8_t mdc1200_op;
 uint8_t mdc1200_arg;
 uint16_t mdc1200_unit_id;
 uint8_t mdc1200_rx_ready_tick_500ms;
-void MDC1200_process_rx(const uint16_t interrupt_bits) {
-
-    const uint16_t rx_sync_flags = BK4819_ReadRegister(0x0B);
-    const uint16_t fsk_reg59 = BK4819_ReadRegister(0x59) & ~((1u << 15) | (1u << 14) | (1u << 12) | (1u << 11));
-
-    const bool rx_sync = (interrupt_bits & BK4819_REG_02_FSK_RX_SYNC) ? true : false;
-    const bool rx_sync_neg = (rx_sync_flags & (1u << 7)) ? true : false;
-    const bool rx_fifo_almost_full = (interrupt_bits & BK4819_REG_02_FSK_FIFO_ALMOST_FULL) ? true : false;
-    const bool rx_finished = (interrupt_bits & BK4819_REG_02_FSK_RX_FINISHED) ? true : false;
-
-
-    if (rx_sync) {
-        mdc1200_rx_buffer_index = 0;
-
-        {
-            unsigned int i;
-            memset(mdc1200_rx_buffer, 0, sizeof(mdc1200_rx_buffer));
-            for (i = 0; i < sizeof(mdc1200_sync_suc_xor); i++)
-                mdc1200_rx_buffer[mdc1200_rx_buffer_index++] = mdc1200_sync_suc_xor[i] ^ (rx_sync_neg ? 0xFF : 0x00);
-        }
-
-
-    }
-
-    if (rx_fifo_almost_full) {
-        unsigned int i;
-        const unsigned int count = BK4819_ReadRegister(0x5E) & (7u << 0);  // almost full threshold
-
-
-        // fetch received packet data
-        for (i = 0; i < count; i++) {
-            const uint16_t word = BK4819_ReadRegister(0x5F) ^ (rx_sync_neg ? 0xFFFF : 0x0000);
-
-
-            if (mdc1200_rx_buffer_index < sizeof(mdc1200_rx_buffer))
-                mdc1200_rx_buffer[mdc1200_rx_buffer_index++] = (word >> 0) & 0xff;
-
-            if (mdc1200_rx_buffer_index < sizeof(mdc1200_rx_buffer))
-                mdc1200_rx_buffer[mdc1200_rx_buffer_index++] = (word >> 8) & 0xff;
-        }
-
-
-        if (mdc1200_rx_buffer_index >= sizeof(mdc1200_rx_buffer)) {
-            BK4819_WriteRegister(0x59, (1u << 15) | (1u << 14) | fsk_reg59);
-            BK4819_WriteRegister(0x59, (1u << 12) | fsk_reg59);
-
-            if (MDC1200_process_rx_data(
-                    mdc1200_rx_buffer,
-                    mdc1200_rx_buffer_index,
-                    &mdc1200_op,
-                    &mdc1200_arg,
-                    &mdc1200_unit_id)) {
-                mdc1200_rx_ready_tick_500ms = 2 * 5;  // 6 second MDC display time
-                gUpdateDisplay = true;
-
-            }
-
-            mdc1200_rx_buffer_index = 0;
-        }
-    }
-
-    if (rx_finished) {
-        mdc1200_rx_buffer_index = 0;
-
-
-        BK4819_WriteRegister(0x59, (1u << 15) | (1u << 14) | fsk_reg59);
-        BK4819_WriteRegister(0x59, (1u << 12) | fsk_reg59);
-
-
-    }
-
-}
 
 
 void MDC1200_init(void) {
-    memcpy(mdc1200_sync_suc_xor, mdc1200_sync, sizeof(mdc1200_sync));
-    xor_modulation(mdc1200_sync_suc_xor, sizeof(mdc1200_sync_suc_xor));
+//    memcpy(mdc1200_sync_suc_xor, mdc1200_sync, sizeof(mdc1200_sync));
+//    xor_modulation(mdc1200_sync_suc_xor, sizeof(mdc1200_sync_suc_xor));
 
     MDC1200_reset_rx();
 }
@@ -533,9 +399,10 @@ uint16_t extractHex(const char *str) {
     }
     return result;
 }
+
 #ifdef  ENABLE_MDC1200_CONTACT
 uint8_t contact_num=0;
-uint16_t MDC_ADD[6] = {0x1D00, 0x1D40, 0x1D80,0x1DC0,0X1F90,0X1FD0};//SHIT ADDRESS COMBINE :(
+//uint16_t MDC_ADD[6] = {0x1D00, 0x1D40, 0x1D80,0x1DC0,0X1F90,0X1FD0};//SHIT ADDRESS COMBINE :(
 void mdc1200_update_contact_num()
 {
     EEPROM_ReadBuffer(MDC_NUM_ADD, (uint8_t *)&contact_num, 1);
@@ -543,11 +410,11 @@ void mdc1200_update_contact_num()
 }
 bool mdc1200_contact_find(uint16_t mdc_id, char *contact) {
     mdc1200_update_contact_num();
-    uint8_t add = 0;
+    uint16_t add = 0x1D00;
     for (uint8_t i = 0; i < contact_num; i++) {
         uint8_t read_once[16]={0};
-        if ((i & 3) == 0 && i) add++;
-        EEPROM_ReadBuffer(MDC_ADD[add] +((i&3) <<4), read_once, 16);
+
+        EEPROM_ReadBuffer(add , read_once, 16);
         if (mdc_id == (uint16_t) (read_once[1] | (read_once[0] << 8))) {
             for (int j = 0; j < 14; ++j) {
                 if(read_once[2+j]<' '||read_once[2+j]>'~')
@@ -558,30 +425,9 @@ bool mdc1200_contact_find(uint16_t mdc_id, char *contact) {
 
             return true;
         }
+                add+=16;
+        if(add==0x1E00)add=0X1F90;
     }
     return false;
 }
-//uint8_t A[64];
-//    memset(A,'A',6*16);
-//    for (int i = MDC_ADD1; i < MDC_ADD1+64; ++i) {
-//        EEPROM_WriteBuffer(i,&A[i-MDC_ADD1]);
-//    }
-//
-//    for (int i = MDC_ADD2+72; i <MDC_ADD2+64; ++i) {
-//        EEPROM_WriteBuffer(i,&A[i-MDC_ADD2]);
-//    }
-//    for (int i =MDC_ADD3; i < MDC_ADD3+64; ++i) {
-//        EEPROM_WriteBuffer(i,&A[i-MDC_ADD3]);
-//    }
-//    for (int i =MDC_ADD4; i < MDC_ADD4+64; ++i) {
-//        EEPROM_WriteBuffer(i,&A[i-MDC_ADD4]);
-//    }
-//    EEPROM_ReadBuffer(MDC_ADD1, A, sizeof(A));
-//    UART_Send(A,64);
-//    EEPROM_ReadBuffer(MDC_ADD2, A, sizeof(A));
-//    UART_Send(A,64);
-//    EEPROM_ReadBuffer(MDC_ADD3, A, sizeof(A));
-//    UART_Send(A,64);
-//    EEPROM_ReadBuffer(MDC_ADD4, A, sizeof(A));
-//    UART_Send(A,64);
 #endif

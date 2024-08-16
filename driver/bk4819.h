@@ -115,7 +115,6 @@ void     BK4819_TurnsOffTones_TurnsOnRX(void);
 	void     BK4819_SetupAircopy(void);
 #endif
 void     BK4819_ResetFSK(void);
-void     BK4819_Idle(void);
 void     BK4819_ExitBypass(void);
 void     BK4819_PrepareTransmit(void);
 void     BK4819_TxOn_Beep(void);
@@ -133,8 +132,8 @@ void     BK4819_PlayDTMFString(const char *pString, bool bDelayFirst, uint16_t F
 void     BK4819_TransmitTone(bool bLocalLoopback, uint32_t Frequency);
 
 void     BK4819_GenTail(uint8_t Tail);
-void     BK4819_EnableCDCSS(void);
-void     BK4819_EnableCTCSS(void);
+void     BK4819_PlayCDCSSTail(void);
+void     BK4819_PlayCTCSSTail(void);
 
 uint16_t BK4819_GetRSSI(void);
 uint8_t  BK4819_GetGlitchIndicator(void);
@@ -174,7 +173,7 @@ void BK4819_send_MDC1200(const uint8_t op, const uint8_t arg, const uint16_t id,
 
 void BK4819_stop_tones(const bool tx);
 void BK4819_start_tone(const uint16_t frequency, const unsigned int level, const bool tx, const bool tx_mute);
-void BK4819_enable_mdc1200_rx(const bool enable);
+void enable_msg_rx(const bool enable);
 
 #endif
 
